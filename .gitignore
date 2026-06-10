@@ -29,6 +29,17 @@ nohup.out
 **/test/
 **/test-image*.png
 *.exe
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.mp4
+*.zip
+*.tar
+*.gz
+!halo/public/logo.png
+!halo/public/screenshot1.jpg
+!halo/public/screenshot2.jpg
 
 # Mission runtime artifacts
 mission/data/
