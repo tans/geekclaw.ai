@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="silk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GeekClaw | 极客超算魔方</title>
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <link rel="stylesheet" href="./styles" />
+    </head>
+    <body>
+        <main
+            class="relative mx-auto w-full max-w-[720px] overflow-hidden px-2 py-4 sm:px-4 sm:py-5"
+        >
+            <div
+                class="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+            >
+                <div class="hero-grid absolute inset-0 opacity-45"></div>
+                <div class="neon-orb neon-orb-left"></div>
+                <div class="neon-orb neon-orb-right"></div>
+                <div class="neon-core"></div>
+            </div>
+
+            <header
+                class="page-fade rounded-xl border border-white/20 bg-black/35 px-3 py-2.5 backdrop-blur-sm sm:rounded-2xl sm:px-4 sm:py-3"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <img
+                            src="/logo.png"
+                            alt="GeekClaw Logo"
+                            class="size-9 rounded-lg object-cover sm:size-10 sm:rounded-xl"
+                        />
+                        <div>
+                            <p class="text-lg font-semibold tracking-tight">
+                                GeekClaw
+                            </p>
+                            <p class="text-xs text-white/70">AI 智能体电脑</p>
+                        </div>
+                    </div>
+                    <a
+                        href="/presale"
+                        class="btn btn-primary btn-sm"
+                    >
+                        预购
+                    </a>
+                </div>
+            </header>
+
+            <section
+                class="page-fade page-fade-delay-2 mt-3 space-y-3 sm:mt-4 sm:space-y-4"
+            >
+                <img
+                    src="/screenshot1.jpg"
+                    alt="GeekClaw 产品视觉图"
+                    class="w-full rounded-xl object-cover sm:rounded-2xl"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </section>
+
+            <section
+                class="page-fade page-fade-delay-1 relative mt-3 rounded-2xl bg-black/45 backdrop-blur-sm sm:mt-5 sm:rounded-3xl"
+            >
+                <div class="relative mb-2">
+                    <div class="product-glow absolute inset-0 -z-10"></div>
+                    <img
+                        src="/screenshot2.jpg"
+                        alt="极客超算魔方发布海报"
+                        class="w-full rounded-xl border border-white/20 shadow-2xl shadow-[#6f4bff]/40 sm:rounded-2xl"
+                        loading="eager"
+                        decoding="async"
+                    />
+                </div>
+                <a
+                    href="/presale"
+                    class="btn btn-primary h-11 w-full text-sm sm:h-12 sm:text-base"
+                    >立即预购</a
+                >
+            </section>
+        </main>
+    </body>
+</html>
