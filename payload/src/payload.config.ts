@@ -37,11 +37,29 @@ export default buildConfig({
   collections: [
     {
       slug: 'users',
-      auth: true,
-      admin: {
-        useAsTitle: 'email',
+      auth: {
+        loginWithUsername: {
+          allowEmailLogin: true,
+          requireEmail: true,
+          requireUsername: true,
+        },
       },
-      fields: [],
+      admin: {
+        useAsTitle: 'username',
+      },
+      fields: [
+        {
+          name: 'role',
+          type: 'select',
+          required: true,
+          defaultValue: 'editor',
+          options: [
+            { label: '超级管理员', value: 'super-admin' },
+            { label: '运营', value: 'ops' },
+            { label: '内容编辑', value: 'editor' },
+          ],
+        },
+      ],
     },
     Media,
     Pages,

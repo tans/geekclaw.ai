@@ -10,6 +10,28 @@ import {
 async function seed() {
   const payload = await getPayload({ config })
 
+  const existingAdmin = await payload.find({
+    collection: "users",
+    limit: 1,
+    pagination: false,
+  }).catch(() => ({ docs: [] as Array<Record<string, unknown>> }))
+
+  if (!existingAdmin.docs[0] && process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD) {
+    const username = process.env.SEED_ADMIN_USERNAME || process.env.SEED_ADMIN_EMAIL.split("@")[0] || "root"
+
+    await payload.create({
+      collection: "users",
+      draft: false,
+      data: {
+        username,
+        email: process.env.SEED_ADMIN_EMAIL,
+        password: process.env.SEED_ADMIN_PASSWORD,
+        role: "super-admin",
+      },
+    })
+    console.log("[seed] created initial super-admin " + process.env.SEED_ADMIN_EMAIL)
+  }
+
   await payload.updateGlobal({
     slug: 'site-settings',
     data: defaultSiteSettings,
