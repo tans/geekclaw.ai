@@ -55,6 +55,21 @@ export default async function ShopPage() {
                 {product.currency === 'CNY' ? '¥' : ''}
                 {product.price.toLocaleString('zh-CN')}
               </p>
+              <div
+                style={{
+                  marginTop: 14,
+                  borderRadius: 16,
+                  background: product.isSoldOut ? '#fff1f0' : '#faf5f3',
+                  padding: '12px 14px',
+                }}
+              >
+                <p style={{ margin: 0, color: product.isSoldOut ? '#b42318' : '#1d1a17', fontWeight: 700, fontSize: 14 }}>
+                  {product.isSoldOut ? '已售罄' : '可下单'}
+                </p>
+                <p style={{ margin: '8px 0 0', color: '#6f6661', lineHeight: 1.7, fontSize: 13 }}>
+                  {product.purchaseMessage || '当前可直接下单。'}
+                </p>
+              </div>
               <div style={{ marginTop: 16 }}>
                 <Link
                   href={`/shop/${product.slug}`}
@@ -64,7 +79,7 @@ export default async function ShopPage() {
                     fontWeight: 600,
                   }}
                 >
-                  查看详情
+                  {product.isSoldOut ? '查看详情' : '查看并下单'}
                 </Link>
               </div>
             </article>

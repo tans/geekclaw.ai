@@ -135,12 +135,34 @@ export default async function ProductDetailPage({
               {product.currency === 'CNY' ? '¥' : ''}
               {product.price.toLocaleString('zh-CN')}
             </p>
+            <div
+              style={{
+                marginTop: 16,
+                borderRadius: 18,
+                background: product.isSoldOut ? '#fff1f0' : '#faf5f3',
+                padding: 16,
+              }}
+            >
+              <p style={{ margin: 0, color: product.isSoldOut ? '#b42318' : '#1d1a17', fontWeight: 700 }}>
+                {product.isSoldOut ? '当前已售罄' : '可售状态'}
+              </p>
+              <p style={{ margin: '8px 0 0', color: '#4f4742', lineHeight: 1.8 }}>
+                {product.purchaseMessage || '当前可直接下单。'}
+              </p>
+              {product.sku ? <p style={{ margin: '8px 0 0', color: '#6f6661', fontSize: 13 }}>SKU：{product.sku}</p> : null}
+            </div>
             <p style={{ margin: '16px 0 0', color: '#6f6661', lineHeight: 1.8 }}>{product.summary}</p>
             <div style={{ marginTop: 20, borderTop: '1px solid rgba(20,20,20,0.08)', paddingTop: 20 }}>
               <OrderForm
+                availableQuantity={product.availableQuantity}
+                allowBackorder={product.allowBackorder}
                 currency={product.currency}
+                isSoldOut={product.isSoldOut}
+                limitPerOrder={product.limitPerOrder}
                 productName={product.name}
                 productSlug={product.slug}
+                purchaseMessage={product.purchaseMessage}
+                sku={product.sku}
                 unitPrice={product.price}
               />
             </div>

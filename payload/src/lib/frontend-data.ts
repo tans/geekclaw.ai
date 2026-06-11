@@ -1,6 +1,7 @@
 import { getPayload, type TypedLocale } from 'payload'
 import config from '@/payload.config'
 import type { Media } from '@/payload-types'
+import { ensureProductsSchema } from '@/lib/product-schema'
 
 export type FrontendPageBlock = {
   heading: string
@@ -64,10 +65,19 @@ export type FrontendProduct = {
   slug: string
   price: number
   currency: string
+  sku?: string
   summary?: string
   cover?: FrontendMedia | null
   gallery?: FrontendMedia[]
   content?: string
+  trackInventory?: boolean
+  stockQuantity?: number
+  allowBackorder?: boolean
+  limitPerOrder?: number
+  reservedQuantity?: number
+  availableQuantity?: number | null
+  isSoldOut?: boolean
+  purchaseMessage?: string
 }
 
 export type FrontendMedia = {
@@ -94,63 +104,63 @@ const fallbackData: FrontendDataSource = {
     home: {
       title: 'GeekClaw',
       slug: 'home',
-      heroTitle: 'GeekClaw 专业内容站与商城后台',
+      heroTitle: '企业 AI、开放能力平台与数字人内容系统',
       heroDescription:
-        '这一版开始不再做临时页，而是直接按 Payload 体系建设完整后台，统一管理官网、博客、专题页和商品。',
-      seoTitle: 'GeekClaw',
-      seoDescription: 'GeekClaw 内容站、专题页、博客与商城后台',
+        'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
+      seoTitle: 'GeekClaw | 企业 AI、OPC 与 LiloAvatar 产品官网',
+      seoDescription: 'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
     },
     bailongma: {
-      title: '白龙马专题页',
+      title: 'LiloAvatar',
       slug: 'bailongma',
-      heroTitle: '白龙马专题页',
+      heroTitle: 'LiloAvatar 数字人内容与陪伴体验系统',
       heroDescription:
-        '这一页将对标参考专题站，但不做静态硬编码站点。后续会由 Payload 后台的 pages 集合驱动。',
-      seoTitle: '白龙马专题页',
-      seoDescription: '白龙马专题页将由 Payload 后台统一管理和发布。',
+        '面向品牌内容、客户服务、培训讲解和互动陪伴场景，构建可持续运营的数字人体验。',
+      seoTitle: 'LiloAvatar | 数字人内容与陪伴体验系统',
+      seoDescription: 'LiloAvatar 面向品牌、客服、培训和互动内容场景。',
       sections: [
         {
           type: 'hero',
-          eyebrow: 'AI Partner',
-          title: '白龙马专题页',
-          description: '更适合招商、品牌、活动和专题落地页的区块化结构。',
-          primaryLabel: '查看商城方案',
+          eyebrow: 'LiloAvatar',
+          title: '让数字人拥有可持续运营的内容、记忆和交互能力',
+          description: '围绕角色设定、知识库、内容脚本、互动记录和渠道发布搭建完整流程。',
+          primaryLabel: '查看商城',
           primaryHref: '/shop',
-          secondaryLabel: '阅读博客',
-          secondaryHref: '/blog',
+          secondaryLabel: '联系团队',
+          secondaryHref: 'mailto:team@geekclaw.ai',
         },
         {
           type: 'featureGrid',
-          heading: '页面结构',
-          description: '在 Payload 后台中拆成明确区块，方便运营同学调整内容。',
+          heading: '核心能力',
+          description: '数字人不只是形象生成，还需要可维护的角色、资料和运营流程。',
           items: [
-            { title: '首屏 Hero', body: '主标题、副标题、行动按钮和品牌立场。' },
-            { title: '优势模块', body: '把卖点拆成卡片，适合 B 端专题页表达。' },
-            { title: '转化区块', body: '最终用 CTA 把用户引导到咨询或下单。' },
+            { title: '角色与人格', body: '定义身份、语气、边界和知识范围。' },
+            { title: '记忆与知识', body: '接入产品资料、品牌语料、FAQ 和服务流程。' },
+            { title: '互动与发布', body: '承接咨询、讲解、培训、活动和内容分发。' },
           ],
         },
         {
           type: 'stats',
           heading: '适合的使用场景',
           items: [
-            { value: '2F', label: '二级专题页面' },
-            { value: 'B2B', label: '企业内容表达' },
-            { value: 'CMS', label: '后台可运营更新' },
+            { value: 'Brand', label: '品牌导览' },
+            { value: 'Support', label: '客户服务' },
+            { value: 'Training', label: '培训讲解' },
           ],
         },
       ],
       blocks: [
         {
-          heading: 'Hero 区块',
-          body: '主标题、副标题、主按钮、首屏主视觉',
+          heading: '内容运营',
+          body: '角色设定、知识资料和互动脚本可持续维护。',
         },
         {
-          heading: '内容区块',
-          body: '图文交错、卡片模块、优势描述、FAQ',
+          heading: '业务承接',
+          body: '适合官网导览、客服咨询、培训讲解和活动互动。',
         },
         {
-          heading: '可运营化',
-          body: '支持后台改文案、换图、发布博客与专题联动',
+          heading: '商城连接',
+          body: '主机、设备和部署服务可进入商城后台维护。',
         },
       ],
     },
@@ -180,22 +190,37 @@ const fallbackData: FrontendDataSource = {
       slug: 'enterprise-deployment',
       price: 9999,
       currency: 'CNY',
-      summary: '适用于需要官网、专题页、商城和内容后台一体化管理的团队。',
-      content: '这是企业部署方案示例详情。后续将由 products 集合和订单流程驱动。',
+      sku: 'GC-ENT-001',
+      summary: '适用于需要企业 AI 部署、OPC 接入和后台运营能力的团队。',
+      content: '企业部署方案可由后台继续维护详情、价格、库存和履约说明。',
+      trackInventory: false,
+      stockQuantity: 0,
+      allowBackorder: true,
+      availableQuantity: null,
+      isSoldOut: false,
+      purchaseMessage: '按方案型服务接单，可直接提交需求并进入支付流程。',
     },
     {
-      name: '白龙马专题页方案',
-      slug: 'bailongma-landing-kit',
+      name: 'LiloAvatar 数字人运行主机',
+      slug: 'liloavatar-host',
       price: 2999,
       currency: 'CNY',
-      summary: '面向单个专题页、招商页或品牌宣传二级页面的专项交付包。',
-      content: '这是白龙马专题页方案详情示例，用于衔接商城与专题内容。',
+      sku: 'GC-LILO-HOST-001',
+      summary: '面向数字人内容运行、演示和本地部署的主机商品示例。',
+      content: '主机销售由商城后台维护，前台仅展示已上架商品。',
+      trackInventory: false,
+      stockQuantity: 0,
+      allowBackorder: true,
+      availableQuantity: null,
+      isSoldOut: false,
+      purchaseMessage: '默认按服务方案接单，可直接创建订单。',
     },
   ],
 }
 
 async function getFrontendDataSource(): Promise<FrontendDataSource> {
   try {
+    ensureProductsSchema()
     const payload = await getPayload({ config })
 
     const [pagesResult, postsResult, productsResult] = await Promise.all([
@@ -312,20 +337,57 @@ async function getFrontendDataSource(): Promise<FrontendDataSource> {
       publishedAt: post.publishedAt ?? undefined,
     }))
 
-    const products = productsResult.docs.map((product) => ({
-      name: product.name,
-      id: product.id,
-      slug: product.slug,
-      price: product.price,
-      currency: product.currency,
-      summary: product.summary ?? undefined,
-      cover: resolveMedia(product.cover),
-      gallery:
-        product.gallery
-          ?.map((item) => resolveMedia(item.image))
-          .filter((item): item is FrontendMedia => Boolean(item)) ?? [],
-      content: lexicalToPlainText(product.content),
-    }))
+    const products = await Promise.all(
+      productsResult.docs.map(async (product) => {
+        const stock = getProductStockFields({
+          sku: 'sku' in product ? (product as { sku?: string | null }).sku : undefined,
+          trackInventory:
+            'trackInventory' in product ? (product as { trackInventory?: boolean | null }).trackInventory : undefined,
+          stockQuantity:
+            'stockQuantity' in product ? (product as { stockQuantity?: number | null }).stockQuantity : undefined,
+          allowBackorder:
+            'allowBackorder' in product ? (product as { allowBackorder?: boolean | null }).allowBackorder : undefined,
+          limitPerOrder:
+            'limitPerOrder' in product ? (product as { limitPerOrder?: number | null }).limitPerOrder : undefined,
+        })
+        const availability = await getProductAvailability({
+          productId: product.id,
+          trackInventory: stock.trackInventory,
+          stockQuantity: stock.stockQuantity,
+          allowBackorder: stock.allowBackorder,
+        })
+
+        return {
+          name: product.name,
+          id: product.id,
+          slug: product.slug,
+          price: product.price,
+          currency: product.currency,
+          sku: stock.sku,
+          summary: product.summary ?? undefined,
+          cover: resolveMedia(product.cover),
+          gallery:
+            product.gallery
+              ?.map((item) => resolveMedia(item.image))
+              .filter((item): item is FrontendMedia => Boolean(item)) ?? [],
+          content: lexicalToPlainText(product.content),
+          trackInventory: stock.trackInventory,
+          stockQuantity: stock.stockQuantity,
+          allowBackorder: stock.allowBackorder,
+          limitPerOrder: stock.limitPerOrder,
+          reservedQuantity: availability.reservedQuantity,
+          availableQuantity: availability.availableQuantity,
+          isSoldOut: availability.isSoldOut,
+          purchaseMessage: buildProductPurchaseMessage({
+            allowBackorder: stock.allowBackorder,
+            availableQuantity: availability.availableQuantity,
+            isSoldOut: availability.isSoldOut,
+            limitPerOrder: stock.limitPerOrder,
+            trackInventory: stock.trackInventory,
+          }),
+        } satisfies FrontendProduct
+      }),
+    )
 
     if (Object.keys(pages).length || posts.length || products.length) {
       return {
@@ -339,6 +401,104 @@ async function getFrontendDataSource(): Promise<FrontendDataSource> {
   }
 
   return fallbackData
+}
+
+async function getProductAvailability(args: {
+  productId: number
+  trackInventory: boolean
+  stockQuantity: number
+  allowBackorder: boolean
+}) {
+  if (!args.trackInventory) {
+    return {
+      reservedQuantity: 0,
+      availableQuantity: null,
+      isSoldOut: false,
+    }
+  }
+
+  const payload = await getPayload({ config })
+  const orders = await payload.find({
+    collection: 'orders',
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    where: {
+      status: {
+        not_equals: 'cancelled',
+      },
+    },
+  })
+
+  const reservedQuantity = orders.docs.reduce((sum, order) => {
+    if (order.status === 'failed' || order.status === 'refunded') {
+      return sum
+    }
+
+    const items = Array.isArray(order.items) ? order.items : []
+
+    return (
+      sum +
+      items.reduce((itemSum, item) => {
+        const productId = typeof item.product === 'number' ? item.product : item.product?.id
+        return productId === args.productId ? itemSum + (Number(item.quantity) || 0) : itemSum
+      }, 0)
+    )
+  }, 0)
+
+  const availableQuantity = Math.max(0, args.stockQuantity - reservedQuantity)
+
+  return {
+    reservedQuantity,
+    availableQuantity,
+    isSoldOut: !args.allowBackorder && availableQuantity <= 0,
+  }
+}
+
+function getProductStockFields(product: {
+  sku?: string | null
+  trackInventory?: boolean | null
+  stockQuantity?: number | null
+  allowBackorder?: boolean | null
+  limitPerOrder?: number | null
+}) {
+  return {
+    sku: typeof product.sku === 'string' ? product.sku : undefined,
+    trackInventory: Boolean(product.trackInventory),
+    stockQuantity: typeof product.stockQuantity === 'number' ? product.stockQuantity : 0,
+    allowBackorder: Boolean(product.allowBackorder),
+    limitPerOrder: typeof product.limitPerOrder === 'number' ? product.limitPerOrder : undefined,
+  }
+}
+
+function buildProductPurchaseMessage(args: {
+  trackInventory: boolean
+  allowBackorder: boolean
+  availableQuantity: number | null
+  isSoldOut: boolean
+  limitPerOrder?: number
+}) {
+  if (!args.trackInventory) {
+    return args.limitPerOrder ? `单笔限购 ${args.limitPerOrder} 件。` : '当前可直接下单。'
+  }
+
+  if (args.isSoldOut) {
+    return '当前库存已售罄，暂不可下单。'
+  }
+
+  if (args.allowBackorder && (args.availableQuantity || 0) <= 0) {
+    return '当前库存已用尽，但允许缺货接单。'
+  }
+
+  if (typeof args.availableQuantity === 'number' && args.availableQuantity <= 5) {
+    return `当前余量 ${args.availableQuantity} 件，请尽快下单。`
+  }
+
+  if (args.limitPerOrder) {
+    return `当前可售，单笔限购 ${args.limitPerOrder} 件。`
+  }
+
+  return typeof args.availableQuantity === 'number' ? `当前可售库存 ${args.availableQuantity} 件。` : '当前可直接下单。'
 }
 
 export async function getPageBySlug(slug: string): Promise<FrontendPage | null> {

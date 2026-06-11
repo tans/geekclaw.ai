@@ -9,15 +9,15 @@ type RichTextValue = NonNullable<NonNullable<Page['blocks']>[number]['body']>
 export const defaultSiteSettings: SeedSiteSetting = {
   siteName: 'GeekClaw',
   siteUrl: 'https://geekclaw.ai',
-  primaryColor: '#b42318',
-  seoTitle: 'GeekClaw',
-  seoDescription: 'GeekClaw 内容站、专题页、博客与商城后台',
+  primaryColor: '#0f766e',
+  seoTitle: 'GeekClaw | 企业 AI、OPC 与 LiloAvatar 产品官网',
+  seoDescription: 'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
   contactEmail: 'team@geekclaw.ai',
   navigation: [
     { label: '首页', href: '/' },
-    { label: '白龙马', href: '/bailongma' },
-    { label: '博客', href: '/blog' },
-    { label: '商城', href: '/shop' },
+    { label: 'OPC', href: '/opc' },
+    { label: 'LiloAvatar', href: '/liloavatar' },
+    { label: '主机销售', href: '/shop' },
   ],
   payment: {
     provider: 'alipay' as const,
@@ -35,58 +35,58 @@ export const defaultPages: SeedPage[] = [
     title: '首页',
     slug: 'home',
     status: 'published' as const,
-    heroTitle: 'GeekClaw 专业内容站与商城后台',
+    heroTitle: '企业 AI、开放能力平台与数字人内容系统',
     heroDescription:
-      '统一管理官网、博客、专题页和商品的现代化后台骨架。',
+      'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
   },
   {
-    title: '白龙马专题页',
+    title: 'LiloAvatar',
     slug: 'bailongma',
     status: 'published' as const,
-    heroTitle: '白龙马专题页',
-    heroDescription: '专题页内容将由 Payload 后台管理。',
+    heroTitle: 'LiloAvatar 数字人内容与陪伴体验系统',
+    heroDescription: '面向品牌内容、客户服务、培训讲解和互动陪伴场景。',
     sections: [
       {
         blockType: 'hero',
-        title: '白龙马专题页',
-        eyebrow: 'AI Partner',
-        description: '适合品牌、活动、招商和解决方案表达的可运营二级页面。',
-        primaryLabel: '查看商城方案',
+        title: '让数字人拥有可持续运营的内容、记忆和交互能力',
+        eyebrow: 'LiloAvatar',
+        description: '围绕角色设定、知识库、内容脚本、互动记录和渠道发布搭建完整流程。',
+        primaryLabel: '查看商城',
         primaryHref: '/shop',
-        secondaryLabel: '阅读博客',
-        secondaryHref: '/blog',
+        secondaryLabel: '联系团队',
+        secondaryHref: 'mailto:team@geekclaw.ai',
       },
       {
         blockType: 'featureGrid',
-        heading: '内容结构',
-        description: '把专题页拆成明确模块，方便内容团队在后台持续维护。',
+        heading: '核心能力',
+        description: '数字人不只是形象生成，还需要可维护的角色、资料和运营流程。',
         items: [
-          { title: '首屏表达', body: '价值主张、按钮、品牌感知统一管理。 ' },
-          { title: '卖点卡片', body: '把核心优势拆分成更适合阅读和转化的区块。' },
-          { title: '转化链路', body: '最终串到博客、咨询或商品订单。' },
+          { title: '角色与人格', body: '定义身份、语气、边界和知识范围。' },
+          { title: '记忆与知识', body: '接入产品资料、品牌语料、FAQ 和服务流程。' },
+          { title: '互动与发布', body: '承接咨询、讲解、培训、活动和内容分发。' },
         ],
       },
       {
         blockType: 'stats',
         heading: '运营目标',
         items: [
-          { value: '2F', label: '专题二级页' },
-          { value: 'CMS', label: '后台可更新' },
-          { value: 'SHOP', label: '可接商品转化' },
+          { value: 'Brand', label: '品牌导览' },
+          { value: 'Support', label: '客户服务' },
+          { value: 'Training', label: '培训讲解' },
         ],
       },
       {
         blockType: 'cta',
-        heading: '需要搭配商品或咨询链路时，可以直接接到商城与订单体系。',
-        description: '这一版已经能把专题页、博客、商品、订单串起来。',
+        heading: '数字人运行环境和主机销售可在商城后台维护。',
+        description: '主机、设备和部署服务可以作为商品维护，不在前台写死。',
         buttonLabel: '去商城',
         buttonHref: '/shop',
       },
     ],
     blocks: [
-      { heading: 'Hero 区块', body: richText('主标题、副标题、主按钮、首屏主视觉') },
-      { heading: '内容区块', body: richText('图文交错、卡片模块、优势描述、FAQ') },
-      { heading: '可运营化', body: richText('支持后台改文案、换图、发布博客与专题联动') },
+      { heading: '内容运营', body: richText('角色设定、知识资料和互动脚本可持续维护。') },
+      { heading: '业务承接', body: richText('适合官网导览、客服咨询、培训讲解和活动互动。') },
+      { heading: '商城连接', body: richText('主机、设备和部署服务可进入商城后台维护。') },
     ],
   },
 ]
@@ -120,16 +120,21 @@ export const defaultPosts: SeedPost[] = [
   },
 ]
 
-export const defaultProducts: SeedProduct[] = [
+export const defaultProducts = [
   {
     name: 'GeekClaw 企业部署方案',
     slug: 'enterprise-deployment',
-    summary: '默认商品数据，用于初始化商城结构。',
+    sku: 'GC-ENT-001',
+    summary: '适用于需要企业 AI 部署、OPC 接入和后台运营能力的团队。',
     price: 9999,
     currency: 'CNY',
+    trackInventory: false,
+    stockQuantity: 0,
+    allowBackorder: true,
+    limitPerOrder: 1,
     status: 'active' as const,
   },
-]
+] as Array<SeedProduct & { sku?: string; trackInventory?: boolean; stockQuantity?: number; allowBackorder?: boolean; limitPerOrder?: number }>
 
 function richText(text: string): RichTextValue {
   return {

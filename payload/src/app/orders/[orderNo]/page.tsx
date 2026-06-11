@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { CancelOrderButton } from '@/components/cancel-order-button'
 import { PageShell } from '@/components/page-shell'
 import type { OrderPaymentEvent } from '@/lib/orders'
 import { getOrderByOrderNo } from '@/lib/orders'
@@ -25,7 +26,9 @@ export default async function OrderDetailPage({
       : 'GeekClaw 商品'
   const quantity = firstItem?.quantity || 1
   const unitPrice = firstItem?.unitPrice || order.totalAmount
-  const canRetryPayment = order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded'
+  const canRetryPayment =
+    order.status !== 'cancelled' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded'
+  const canCancelOrder = order.status !== 'cancelled' && order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded'
   const retryHref = canRetryPayment
     ? `/shop/checkout-success?orderNo=${encodeURIComponent(order.orderNo)}`
     : '/shop'
@@ -114,6 +117,15 @@ export default async function OrderDetailPage({
                 <Link href={retryHref} style={buttonPrimary}>
                   继续支付
                 </Link>
+              ) : null}
+              {canCancelOrder ? (
+                <CancelOrderButton
+                  orderNo={order.orderNo}
+                  label="取消订单"
+                  reason="用户在前台取消订单，库存占用已释放。"
+                  source="shop"
+                  variant="danger"
+                />
               ) : null}
               <Link href="/payment-diagnostics" style={buttonSecondary}>
                 支付配置诊断

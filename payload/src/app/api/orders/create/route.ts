@@ -30,7 +30,12 @@ export async function POST(request: Request) {
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
     const code = error instanceof Error ? error.message : 'ORDER_CREATE_FAILED'
-    const status = code === 'PRODUCT_NOT_FOUND' ? 404 : 500
+    const status =
+      code === 'PRODUCT_NOT_FOUND'
+        ? 404
+        : code === 'PRODUCT_SOLD_OUT' || code === 'PRODUCT_LIMIT_EXCEEDED'
+          ? 400
+          : 500
 
     return NextResponse.json({ error: code }, { status })
   }

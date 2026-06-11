@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ orderNo: order.orderNo, paymentStatus: order.paymentStatus }, { status: 200 })
   } catch (error) {
     const code = error instanceof Error ? error.message : 'MOCK_PAYMENT_FAILED'
-    const status = code === 'ORDER_NOT_FOUND' ? 404 : 500
+    const status = code === 'ORDER_NOT_FOUND' ? 404 : code === 'ORDER_CANCELLED' ? 409 : 500
 
     return NextResponse.json({ error: code }, { status })
   }

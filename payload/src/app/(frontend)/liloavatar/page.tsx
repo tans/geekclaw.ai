@@ -4,6 +4,6 @@ import { liloAvatarContent } from '@/lib/marketing-content'
 
 export const metadata: Metadata = liloAvatarContent.seo
 
-export default function LegacyAvatarPage() {
+export default function LiloAvatarPage() {
   return <MarketingPage content={liloAvatarContent} />
 }

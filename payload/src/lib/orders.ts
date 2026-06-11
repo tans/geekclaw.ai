@@ -1,7 +1,9 @@
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { ensureOrdersSchema } from '@/lib/order-schema'
+import { getUnpaidOrderExpireCutoff, getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
 import { createAlipayPaymentOrder } from '@/lib/payment'
+import { ensureProductsSchema } from '@/lib/product-schema'
 import { getSiteData } from '@/lib/site'
 
 export type OrderPaymentEvent = {
@@ -18,6 +20,8 @@ export type OrderPaymentEvent = {
     | 'payment_initiated'
     | 'payment_paid'
     | 'payment_failed'
+    | 'order_cancelled'
+    | 'order_expired'
     | 'notify_invalid'
     | 'notify_received'
     | 'notify_error'
@@ -57,6 +61,7 @@ export type CreateOrderInput = {
 
 export async function createOrder(input: CreateOrderInput) {
   ensureOrdersSchema()
+  ensureProductsSchema()
   const payload = await getPayload({ config })
 
   const products = await payload.find({
@@ -86,6 +91,34 @@ export async function createOrder(input: CreateOrderInput) {
   }
 
   const quantity = Number.isFinite(input.quantity) && input.quantity > 0 ? Math.floor(input.quantity) : 1
+  const productStock = getProductStockFields({
+    trackInventory:
+      'trackInventory' in product ? (product as { trackInventory?: boolean | null }).trackInventory : undefined,
+    stockQuantity:
+      'stockQuantity' in product ? (product as { stockQuantity?: number | null }).stockQuantity : undefined,
+    allowBackorder:
+      'allowBackorder' in product ? (product as { allowBackorder?: boolean | null }).allowBackorder : undefined,
+    limitPerOrder:
+      'limitPerOrder' in product ? (product as { limitPerOrder?: number | null }).limitPerOrder : undefined,
+  })
+
+  if (productStock.limitPerOrder && quantity > productStock.limitPerOrder) {
+    throw new Error('PRODUCT_LIMIT_EXCEEDED')
+  }
+
+  if (productStock.trackInventory && !productStock.allowBackorder) {
+    const availability = await getProductAvailabilityForOrder(payload, {
+      productId: product.id,
+      stockQuantity: productStock.stockQuantity,
+      trackInventory: productStock.trackInventory,
+      allowBackorder: productStock.allowBackorder,
+    })
+
+    if ((availability.availableQuantity ?? 0) < quantity) {
+      throw new Error('PRODUCT_SOLD_OUT')
+    }
+  }
+
   const totalAmount = product.price * quantity
   const orderNo = `GC${Date.now()}${Math.floor(Math.random() * 9000 + 1000)}`
 
@@ -123,6 +156,68 @@ export async function createOrder(input: CreateOrderInput) {
   }
 }
 
+function getProductStockFields(product: {
+  trackInventory?: boolean | null
+  stockQuantity?: number | null
+  allowBackorder?: boolean | null
+  limitPerOrder?: number | null
+}) {
+  return {
+    trackInventory: Boolean(product.trackInventory),
+    stockQuantity: typeof product.stockQuantity === 'number' ? product.stockQuantity : 0,
+    allowBackorder: Boolean(product.allowBackorder),
+    limitPerOrder: typeof product.limitPerOrder === 'number' ? product.limitPerOrder : undefined,
+  }
+}
+
+async function getProductAvailabilityForOrder(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  args: {
+    productId: number
+    trackInventory: boolean
+    stockQuantity: number
+    allowBackorder: boolean
+  },
+) {
+  if (!args.trackInventory) {
+    return {
+      availableQuantity: null,
+    }
+  }
+
+  const orders = await payload.find({
+    collection: 'orders',
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    where: {
+      status: {
+        not_equals: 'cancelled',
+      },
+    },
+  })
+
+  const reservedQuantity = orders.docs.reduce((sum, order) => {
+    if (order.status === 'failed' || order.status === 'refunded') {
+      return sum
+    }
+
+    const items = Array.isArray(order.items) ? order.items : []
+
+    return (
+      sum +
+      items.reduce((itemSum, item) => {
+        const productId = typeof item.product === 'number' ? item.product : item.product?.id
+        return productId === args.productId ? itemSum + (Number(item.quantity) || 0) : itemSum
+      }, 0)
+    )
+  }, 0)
+
+  return {
+    availableQuantity: Math.max(0, args.stockQuantity - reservedQuantity),
+  }
+}
+
 export async function createOrderPayment(orderNo: string) {
   ensureOrdersSchema()
   const payload = await getPayload({ config })
@@ -144,6 +239,20 @@ export async function createOrderPayment(orderNo: string) {
 
   if (!order) {
     throw new Error('ORDER_NOT_FOUND')
+  }
+
+  if (order.status === 'cancelled') {
+    throw new Error('ORDER_CANCELLED')
+  }
+
+  if (isOrderExpired(order)) {
+    await cancelOrder({
+      orderNo,
+      source: 'system',
+      reason: `订单超过 ${getUnpaidOrderExpireMinutes()} 分钟未支付，系统已自动关闭。`,
+      eventType: 'order_expired',
+    })
+    throw new Error('ORDER_EXPIRED')
   }
 
   if (order.paymentStatus === 'paid') {
@@ -236,6 +345,10 @@ export async function markOrderPaid(args: {
     throw new Error('ORDER_NOT_FOUND')
   }
 
+  if (order.status === 'cancelled') {
+    throw new Error('ORDER_CANCELLED')
+  }
+
   const updated = await payload.update({
     collection: 'orders',
     id: order.id,
@@ -297,6 +410,128 @@ export async function markOrderFailed(args: {
   })
 
   return updated
+}
+
+export async function cancelOrder(args: {
+  orderNo: string
+  source?: OrderPaymentEvent['source']
+  reason?: string
+  eventType?: 'order_cancelled' | 'order_expired'
+}) {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+  const order = await getOrderByOrderNo(args.orderNo)
+
+  if (!order) {
+    throw new Error('ORDER_NOT_FOUND')
+  }
+
+  if (order.paymentStatus === 'paid' || order.paymentStatus === 'refunded') {
+    throw new Error('ORDER_CANNOT_CANCEL')
+  }
+
+  if (order.status === 'cancelled') {
+    throw new Error('ORDER_ALREADY_CANCELLED')
+  }
+
+  const updated = await payload.update({
+    collection: 'orders',
+    id: order.id,
+    data: {
+      status: 'cancelled',
+      paymentStatus: 'failed',
+      paymentLastError: args.reason || '订单已取消',
+    },
+  })
+
+  await appendOrderPaymentEvent(args.orderNo, {
+    createdAt: new Date().toISOString(),
+    source: args.source || 'system',
+    type: args.eventType || 'order_cancelled',
+    message: args.reason || '订单已取消，库存占用已释放。',
+    status: 'cancelled',
+    payload: {
+      orderStatus: 'cancelled',
+      reason: args.reason || null,
+    },
+  })
+
+  return updated
+}
+
+export async function closeExpiredPendingOrders() {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+  const cutoff = getUnpaidOrderExpireCutoff()
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    sort: 'createdAt',
+    where: {
+      and: [
+        {
+          status: {
+            equals: 'pending',
+          },
+        },
+        {
+          paymentStatus: {
+            equals: 'unpaid',
+          },
+        },
+        {
+          createdAt: {
+            less_than: cutoff.toISOString(),
+          },
+        },
+      ],
+    },
+  })
+
+  const closed: string[] = []
+
+  for (const order of result.docs) {
+    await cancelOrder({
+      orderNo: order.orderNo,
+      source: 'system',
+      reason: `订单超过 ${getUnpaidOrderExpireMinutes()} 分钟未支付，系统已自动关闭。`,
+      eventType: 'order_expired',
+    }).catch((error) => {
+      if (!(error instanceof Error) || error.message !== 'ORDER_ALREADY_CANCELLED') {
+        throw error
+      }
+    })
+
+    closed.push(order.orderNo)
+  }
+
+  return {
+    closedOrderNos: closed,
+    closedCount: closed.length,
+    cutoff: cutoff.toISOString(),
+    expireMinutes: getUnpaidOrderExpireMinutes(),
+  }
+}
+
+function isOrderExpired(order: {
+  status?: string | null
+  paymentStatus?: string | null
+  createdAt: string
+}) {
+  if (order.status !== 'pending' || order.paymentStatus !== 'unpaid') {
+    return false
+  }
+
+  const createdAt = new Date(order.createdAt)
+
+  if (Number.isNaN(createdAt.getTime())) {
+    return false
+  }
+
+  return createdAt.getTime() < getUnpaidOrderExpireCutoff().getTime()
 }
 
 export async function appendOrderPaymentEvent(orderNo: string, event: OrderPaymentEvent) {

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CancelOrderButton } from '@/components/cancel-order-button'
 import { WorkbenchOrderActions } from '@/components/admin/workbench-order-actions'
 import { getPendingFulfillmentOrders, getPendingPaymentOrders, getRecentPaymentExceptions } from '@/lib/orders'
 
@@ -38,6 +39,15 @@ export default async function OrdersWorkbenchPage() {
           <Link href="/admin/collections/orders" style={buttonPrimary}>
             打开订单列表
           </Link>
+          <Link href={buildOrdersFilterHref({ paymentStatus: 'failed' })} style={buttonSecondary}>
+            仅看支付失败
+          </Link>
+          <Link href={buildOrdersFilterHref({ paymentStatus: 'processing' })} style={buttonSecondary}>
+            仅看支付中
+          </Link>
+          <Link href={buildPendingFulfillmentHref()} style={buttonSecondary}>
+            仅看待履约
+          </Link>
           <Link href="/admin/globals/site-settings" style={buttonSecondary}>
             站点设置
           </Link>
@@ -55,6 +65,7 @@ export default async function OrdersWorkbenchPage() {
         description="适合客服或运营跟进用户补支付、确认支付卡点。"
         emptyText="当前没有待支付或支付中的订单。"
         orders={pendingPayments}
+        viewAllHref={buildPendingPaymentHref()}
       />
 
       <QueueSection
@@ -62,6 +73,7 @@ export default async function OrdersWorkbenchPage() {
         description="已支付但尚未完成交付的订单，适合运营逐单推进。"
         emptyText="当前没有待履约订单。"
         orders={pendingFulfillment}
+        viewAllHref={buildPendingFulfillmentHref()}
       />
 
       <QueueSection
@@ -69,6 +81,7 @@ export default async function OrdersWorkbenchPage() {
         description="聚合支付失败和处理中订单，便于排查支付问题。"
         emptyText="当前没有异常或处理中订单。"
         orders={paymentExceptions}
+        viewAllHref={buildExceptionHref()}
       />
     </main>
   )
@@ -79,6 +92,7 @@ function QueueSection({
   description,
   emptyText,
   orders,
+  viewAllHref,
 }: {
   title: string
   description: string
@@ -98,6 +112,7 @@ function QueueSection({
     paidAt?: string | null
     updatedAt: string
   }>
+  viewAllHref: string
 }) {
   return (
     <section
@@ -108,8 +123,15 @@ function QueueSection({
         padding: 24,
       }}
     >
-      <h2 style={{ margin: 0, fontSize: 24 }}>{title}</h2>
-      <p style={{ margin: '10px 0 0', color: '#4f4742', lineHeight: 1.7 }}>{description}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24 }}>{title}</h2>
+          <p style={{ margin: '10px 0 0', color: '#4f4742', lineHeight: 1.7 }}>{description}</p>
+        </div>
+        <Link href={viewAllHref} style={smallButtonSecondary}>
+          查看全部
+        </Link>
+      </div>
       {orders.length ? (
         <div style={{ marginTop: 18, display: 'grid', gap: 12 }}>
           {orders.map((order) => (
@@ -153,6 +175,15 @@ function QueueSection({
                 <Link href={`/orders/${order.orderNo}`} style={smallButtonSecondary}>
                   前台详情
                 </Link>
+                {order.paymentStatus !== 'paid' && order.paymentStatus !== 'refunded' ? (
+                  <CancelOrderButton
+                    orderNo={order.orderNo}
+                    label="取消订单"
+                    reason="后台工作台取消订单，库存占用已释放。"
+                    source="operator"
+                    variant="secondary"
+                  />
+                ) : null}
               </div>
               {title === '待履约' ? (
                 <WorkbenchOrderActions
@@ -183,6 +214,38 @@ function QueueSection({
       )}
     </section>
   )
+}
+
+function buildOrdersFilterHref(filters: {
+  paymentStatus?: 'unpaid' | 'processing' | 'paid' | 'failed' | 'refunded'
+  fulfillmentStatusNotEquals?: 'completed'
+}) {
+  const params = new URLSearchParams()
+
+  if (filters.paymentStatus) {
+    params.set('where[paymentStatus][equals]', filters.paymentStatus)
+  }
+
+  if (filters.fulfillmentStatusNotEquals) {
+    params.set('where[fulfillmentStatus][not_equals]', filters.fulfillmentStatusNotEquals)
+  }
+
+  return `/admin/collections/orders?${params.toString()}`
+}
+
+function buildPendingPaymentHref() {
+  return buildOrdersFilterHref({ paymentStatus: 'unpaid' })
+}
+
+function buildPendingFulfillmentHref() {
+  const params = new URLSearchParams()
+  params.set('where[paymentStatus][equals]', 'paid')
+  params.set('where[fulfillmentStatus][not_equals]', 'completed')
+  return `/admin/collections/orders?${params.toString()}`
+}
+
+function buildExceptionHref() {
+  return buildOrdersFilterHref({ paymentStatus: 'failed' })
 }
 
 function MetricCard({ label, value, tone }: { label: string; value: string; tone: string }) {

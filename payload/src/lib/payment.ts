@@ -114,6 +114,7 @@ export function verifyAlipayNotify(input: {
 export async function validateAlipayOrderResult(input: {
   orderNo: string
   appId?: string
+  sellerId?: string
   totalAmount?: string
   postData?: Record<string, string>
 }) {
@@ -139,6 +140,28 @@ export async function validateAlipayOrderResult(input: {
         ok: false as const,
         code: 'APP_ID_MISMATCH',
         message: `支付宝回调 app_id 不匹配，期望 ${input.appId.trim()}，实际 ${payloadAppId}。`,
+        order,
+      }
+    }
+  }
+
+  if (input.sellerId?.trim()) {
+    const payloadSellerId = input.postData?.seller_id?.trim()
+
+    if (!payloadSellerId) {
+      return {
+        ok: false as const,
+        code: 'SELLER_ID_MISSING',
+        message: '支付宝回调缺少 seller_id。',
+        order,
+      }
+    }
+
+    if (payloadSellerId !== input.sellerId.trim()) {
+      return {
+        ok: false as const,
+        code: 'SELLER_ID_MISMATCH',
+        message: `支付宝回调 seller_id 不匹配，期望 ${input.sellerId.trim()}，实际 ${payloadSellerId}。`,
         order,
       }
     }

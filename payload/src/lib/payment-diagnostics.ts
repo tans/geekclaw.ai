@@ -1,4 +1,5 @@
 import { getRawSitePaymentConfig, getSiteData, siteFallback } from '@/lib/site'
+import { getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
 
 type ConfigSource = 'env' | 'site-settings' | 'fallback' | 'missing'
 
@@ -7,7 +8,17 @@ export type PaymentDiagnostics = {
   mode: 'real' | 'mock'
   summary: string
   runtimeConfigSource: 'env-first' | 'site-settings-fallback'
+  orderExpiry: {
+    expireMinutes: number
+    cronSecretConfigured: boolean
+    closeExpiredApiPath: string
+  }
   appId: {
+    configured: boolean
+    source: ConfigSource
+    valuePreview: string
+  }
+  sellerId: {
     configured: boolean
     source: ConfigSource
     valuePreview: string
@@ -97,6 +108,7 @@ export async function getPaymentDiagnostics(): Promise<PaymentDiagnostics> {
 
   const envValues = {
     appId: process.env.ALIPAY_APP_ID || '',
+    sellerId: process.env.ALIPAY_SELLER_ID || '',
     privateKey: process.env.ALIPAY_PRIVATE_KEY || '',
     publicKey: process.env.ALIPAY_PUBLIC_KEY || '',
     notifyUrl: process.env.ALIPAY_NOTIFY_URL || '',
@@ -109,6 +121,7 @@ export async function getPaymentDiagnostics(): Promise<PaymentDiagnostics> {
   if (!site.payment.appId.trim()) warnings.push('未配置 `ALIPAY_APP_ID`，当前无法发起真实支付宝支付。')
   if (!site.payment.privateKey.trim()) warnings.push('未配置应用私钥，当前会回退到 mock 支付。')
   if (!site.payment.publicKey.trim()) warnings.push('未配置支付宝公钥，异步通知验签无法通过。')
+  if (!site.payment.sellerId.trim()) warnings.push('未配置 `ALIPAY_SELLER_ID`，notify 无法校验收款账号归属。')
   if (!site.payment.notifyUrl.startsWith('https://')) warnings.push('`notifyUrl` 不是 HTTPS 地址，线上异步通知存在风险。')
   if (!site.payment.returnUrl.startsWith('https://')) warnings.push('`returnUrl` 不是 HTTPS 地址，支付回跳体验会异常。')
   if (!site.payment.gateway.startsWith('https://')) warnings.push('`gateway` 不是 HTTPS 地址，请检查支付宝网关配置。')
@@ -123,10 +136,20 @@ export async function getPaymentDiagnostics(): Promise<PaymentDiagnostics> {
     mode,
     summary: mode === 'real' ? '已具备真实支付宝跳转条件。' : '当前缺少真实支付宝关键配置，将自动回退到 mock 支付。',
     runtimeConfigSource: 'env-first',
+    orderExpiry: {
+      expireMinutes: getUnpaidOrderExpireMinutes(),
+      cronSecretConfigured: Boolean((process.env.CRON_SECRET || '').trim()),
+      closeExpiredApiPath: '/api/orders/close-expired',
+    },
     appId: {
       configured: Boolean(site.payment.appId.trim()),
       source: detectSource(site.payment.appId, envValues.appId, globalPayment.appId, siteFallback.payment.appId),
       valuePreview: maskText(site.payment.appId),
+    },
+    sellerId: {
+      configured: Boolean(site.payment.sellerId.trim()),
+      source: detectSource(site.payment.sellerId, envValues.sellerId, globalPayment.sellerId, siteFallback.payment.sellerId),
+      valuePreview: maskText(site.payment.sellerId),
     },
     privateKey: {
       configured: Boolean(site.payment.privateKey.trim()),

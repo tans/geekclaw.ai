@@ -89,6 +89,13 @@ export const SiteSettings: GlobalConfig = {
           },
         },
         {
+          name: 'sellerId',
+          type: 'text',
+          admin: {
+            description: '支付宝收款账号对应的 seller_id。配置后可用于异步通知的业务校验。',
+          },
+        },
+        {
           name: 'gateway',
           type: 'text',
           defaultValue: 'https://openapi.alipay.com/gateway.do',

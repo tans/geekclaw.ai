@@ -31,19 +31,25 @@ export default async function PaySuccessPage({
     order.paymentStatus !== 'paid' &&
     validation?.ok
   ) {
-    order = await markOrderPaid({
-      orderNo: out_trade_no,
-      tradeNo: trade_no,
-      source: 'alipay-return',
-      message: '支付宝同步返回页已确认支付成功，最终状态仍以异步通知回写为准。',
-      paymentPayload: {
-        provider: 'alipay-return',
-        outTradeNo: out_trade_no,
+    try {
+      order = await markOrderPaid({
+        orderNo: out_trade_no,
         tradeNo: trade_no,
-        tradeStatus: trade_status,
-        totalAmount: total_amount,
-      },
-    })
+        source: 'alipay-return',
+        message: '支付宝同步返回页已确认支付成功，最终状态仍以异步通知回写为准。',
+        paymentPayload: {
+          provider: 'alipay-return',
+          outTradeNo: out_trade_no,
+          tradeNo: trade_no,
+          tradeStatus: trade_status,
+          totalAmount: total_amount,
+        },
+      })
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== 'ORDER_CANCELLED') {
+        throw error
+      }
+    }
   }
 
   const firstItem = order?.items?.[0]
@@ -88,6 +94,20 @@ export default async function PaySuccessPage({
               }}
             >
               当前返回参数未通过业务校验：{validation.message}
+            </div>
+          ) : null}
+          {order?.status === 'cancelled' ? (
+            <div
+              style={{
+                marginTop: 20,
+                borderRadius: 18,
+                background: '#faf5f3',
+                padding: '14px 16px',
+                color: '#4f4742',
+                lineHeight: 1.8,
+              }}
+            >
+              这个订单已提前取消。即使支付返回页到达，也不会再把订单改成已支付。
             </div>
           ) : null}
           {order ? (

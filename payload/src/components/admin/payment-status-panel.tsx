@@ -43,9 +43,15 @@ export default async function PaymentStatusPanel(_: ServerProps) {
 
       <div style={{ marginTop: 20, display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         <Card title="App ID" value={diagnostics.appId.configured ? diagnostics.appId.valuePreview : '未配置'} meta={diagnostics.appId.source} />
+        <Card title="Seller ID" value={diagnostics.sellerId.configured ? diagnostics.sellerId.valuePreview : '未配置'} meta={diagnostics.sellerId.source} />
         <Card title="应用私钥" value={diagnostics.privateKey.configured ? `${diagnostics.privateKey.lineCount} 行` : '未配置'} meta={diagnostics.privateKey.source} />
         <Card title="支付宝公钥" value={diagnostics.publicKey.configured ? `${diagnostics.publicKey.lineCount} 行` : '未配置'} meta={diagnostics.publicKey.source} />
         <Card title="Notify URL" value={diagnostics.notifyUrl.configured ? '已配置' : '未配置'} meta={diagnostics.notifyUrl.source} />
+        <Card
+          title="未支付关闭"
+          value={`${diagnostics.orderExpiry.expireMinutes} 分钟`}
+          meta={diagnostics.orderExpiry.cronSecretConfigured ? 'cron protected' : 'secret missing'}
+        />
       </div>
 
       <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
@@ -60,6 +66,18 @@ export default async function PaymentStatusPanel(_: ServerProps) {
           }}
         >
           当前服务端读取顺序：环境变量优先，`site-settings` 作为回退。联调前若修改了后台支付配置但结果没变化，需要同步检查 pm2 进程环境并重启服务。
+        </div>
+        <div
+          style={{
+            borderRadius: 14,
+            background: '#f7f7f6',
+            padding: '12px 14px',
+            color: '#4f4742',
+            lineHeight: 1.7,
+          }}
+        >
+          当前未支付订单会在 {diagnostics.orderExpiry.expireMinutes} 分钟后自动关闭。可通过 `POST {diagnostics.orderExpiry.closeExpiredApiPath}`
+          配合 `Authorization: Bearer $CRON_SECRET` 触发。
         </div>
         {diagnostics.warnings.length ? (
           diagnostics.warnings.map((warning) => (
@@ -100,6 +118,15 @@ export default async function PaymentStatusPanel(_: ServerProps) {
         </a>
         <a href="/admin/collections/orders" style={buttonSecondary}>
           查看订单列表
+        </a>
+        <a href={buildOrdersFilterHref({ paymentStatus: 'failed' })} style={buttonSecondary}>
+          支付失败列表
+        </a>
+        <a href={buildOrdersFilterHref({ paymentStatus: 'processing' })} style={buttonSecondary}>
+          支付中列表
+        </a>
+        <a href={buildPendingFulfillmentHref()} style={buttonSecondary}>
+          待履约列表
         </a>
       </div>
 
@@ -259,6 +286,25 @@ function Card({ title, value, meta }: { title: string; value: string; meta: stri
       <p style={{ margin: '10px 0 0', color: '#6f6661', fontSize: 12 }}>来源：{meta}</p>
     </article>
   )
+}
+
+function buildOrdersFilterHref(filters: {
+  paymentStatus?: 'unpaid' | 'processing' | 'paid' | 'failed' | 'refunded'
+}) {
+  const params = new URLSearchParams()
+
+  if (filters.paymentStatus) {
+    params.set('where[paymentStatus][equals]', filters.paymentStatus)
+  }
+
+  return `/admin/collections/orders?${params.toString()}`
+}
+
+function buildPendingFulfillmentHref() {
+  const params = new URLSearchParams()
+  params.set('where[paymentStatus][equals]', 'paid')
+  params.set('where[fulfillmentStatus][not_equals]', 'completed')
+  return `/admin/collections/orders?${params.toString()}`
 }
 
 const buttonPrimary = {

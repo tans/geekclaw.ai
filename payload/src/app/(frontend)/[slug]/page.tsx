@@ -5,7 +5,7 @@ import { PageShell } from '@/components/page-shell'
 import { getPageBySlug } from '@/lib/frontend-data'
 import { getSiteData, siteFallback } from '@/lib/site'
 
-const reservedSlugs = new Set(['bailongma', 'blog', 'shop', 'payment-diagnostics'])
+const reservedSlugs = new Set(['bailongma', 'liloavatar', 'opc', 'blog', 'shop', 'payment-diagnostics'])
 
 export async function generateMetadata({
   params,

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { CancelOrderButton } from '@/components/cancel-order-button'
 
 export function WorkbenchOrderActions({
   orderNo,
@@ -191,6 +192,13 @@ export function WorkbenchOrderActions({
             {pendingAction === 'completed' ? '正在完成...' : '标记已完成'}
           </button>
         ) : null}
+        <CancelOrderButton
+          orderNo={orderNo}
+          label="取消订单"
+          reason="后台运营取消订单，库存占用已释放。"
+          source="operator"
+          variant="secondary"
+        />
       </div>
       {error ? (
         <p style={{ margin: 0, color: '#b42318', fontSize: 13 }}>

@@ -34,15 +34,26 @@ export default async function PaymentDiagnosticsPage() {
             <Card title="配置优先级" value={diagnostics.runtimeConfigSource} hint="当前服务端优先读取环境变量，再回退站点设置" />
             <Card title="Notify URL" value={diagnostics.notifyUrl.configured ? '已配置' : '缺失'} hint={diagnostics.notifyUrl.value} />
             <Card title="Return URL" value={diagnostics.returnUrl.configured ? '已配置' : '缺失'} hint={diagnostics.returnUrl.value} />
+            <Card
+              title="未支付关闭"
+              value={`${diagnostics.orderExpiry.expireMinutes} 分钟`}
+              hint={diagnostics.orderExpiry.cronSecretConfigured ? '已配置 cron 保护口令' : '未配置 cron 保护口令'}
+            />
           </div>
 
           <div style={{ marginTop: 28, display: 'grid', gap: 14 }}>
             <DetailRow label="App ID" value={diagnostics.appId.configured ? diagnostics.appId.valuePreview : '未配置'} source={sourceLabel[diagnostics.appId.source]} />
+            <DetailRow label="Seller ID" value={diagnostics.sellerId.configured ? diagnostics.sellerId.valuePreview : '未配置'} source={sourceLabel[diagnostics.sellerId.source]} />
             <DetailRow label="应用私钥" value={diagnostics.privateKey.configured ? `${diagnostics.privateKey.lineCount} 行` : '未配置'} source={sourceLabel[diagnostics.privateKey.source]} />
             <DetailRow label="支付宝公钥" value={diagnostics.publicKey.configured ? `${diagnostics.publicKey.lineCount} 行` : '未配置'} source={sourceLabel[diagnostics.publicKey.source]} />
             <DetailRow label="Notify URL" value={diagnostics.notifyUrl.value || '-'} source={sourceLabel[diagnostics.notifyUrl.source]} />
             <DetailRow label="Return URL" value={diagnostics.returnUrl.value || '-'} source={sourceLabel[diagnostics.returnUrl.source]} />
             <DetailRow label="Gateway" value={diagnostics.gateway.value || '-'} source={sourceLabel[diagnostics.gateway.source]} />
+            <DetailRow
+              label="超时关闭接口"
+              value={diagnostics.orderExpiry.closeExpiredApiPath}
+              source={diagnostics.orderExpiry.cronSecretConfigured ? 'protected' : 'secret-missing'}
+            />
           </div>
 
           <div style={{ marginTop: 28 }}>

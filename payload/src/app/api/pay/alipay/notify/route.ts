@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   const orderNo = postData.out_trade_no
   const tradeNo = postData.trade_no
   const tradeStatus = postData.trade_status
+  const sellerId = postData.seller_id
 
   if (!site.payment.publicKey) {
     if (orderNo) {
@@ -25,6 +26,21 @@ export async function POST(request: Request) {
     }
 
     return new NextResponse('missing public key', { status: 400 })
+  }
+
+  if (!tradeStatus) {
+    if (orderNo) {
+      await appendOrderPaymentEvent(orderNo, {
+        createdAt: new Date().toISOString(),
+        source: 'alipay-notify',
+        type: 'notify_invalid',
+        message: '支付宝 notify 缺少 trade_status。',
+        status: 'missing_trade_status',
+        payload: postData,
+      }).catch(() => undefined)
+    }
+
+    return new NextResponse('missing trade_status', { status: 400 })
   }
 
   let isValid = false
@@ -71,6 +87,7 @@ export async function POST(request: Request) {
   const validation = await validateAlipayOrderResult({
     orderNo,
     appId: site.payment.appId,
+    sellerId: site.payment.sellerId,
     totalAmount: postData.total_amount,
     postData,
   })
@@ -89,6 +106,20 @@ export async function POST(request: Request) {
   }
 
   const paid = tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED'
+  const closed = tradeStatus === 'TRADE_CLOSED'
+
+  if (!paid && !closed) {
+    await appendOrderPaymentEvent(orderNo, {
+      createdAt: new Date().toISOString(),
+      source: 'alipay-notify',
+      type: 'notify_invalid',
+      message: `支付宝 notify 返回了未支持的交易状态：${tradeStatus}`,
+      status: 'unsupported_trade_status',
+      payload: postData,
+    }).catch(() => undefined)
+
+    return new NextResponse('unsupported trade_status', { status: 400 })
+  }
 
   try {
     await appendOrderPaymentEvent(orderNo, {
@@ -113,7 +144,9 @@ export async function POST(request: Request) {
         orderNo,
         paymentPayload: postData,
         source: 'alipay-notify',
-        message: `支付宝异步通知返回非成功状态：${tradeStatus || 'unknown'}`,
+        message: sellerId
+          ? `支付宝异步通知确认交易关闭：${tradeStatus}`
+          : `支付宝异步通知返回非成功状态：${tradeStatus || 'unknown'}`,
         status: tradeStatus || 'unknown',
       })
     }
@@ -122,6 +155,19 @@ export async function POST(request: Request) {
 
     if (code === 'ORDER_NOT_FOUND') {
       return new NextResponse('order not found', { status: 404 })
+    }
+
+    if (code === 'ORDER_CANCELLED') {
+      await appendOrderPaymentEvent(orderNo, {
+        createdAt: new Date().toISOString(),
+        source: 'alipay-notify',
+        type: 'notify_invalid',
+        message: '支付宝异步通知到达时，订单已被取消，已拒绝回写支付成功。',
+        status: 'order_cancelled',
+        payload: postData,
+      }).catch(() => undefined)
+
+      return new NextResponse('order cancelled', { status: 409 })
     }
 
     return new NextResponse('order update failed', { status: 500 })

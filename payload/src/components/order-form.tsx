@@ -8,11 +8,23 @@ export function OrderForm({
   productName,
   unitPrice,
   currency,
+  availableQuantity,
+  allowBackorder,
+  isSoldOut,
+  limitPerOrder,
+  purchaseMessage,
+  sku,
 }: {
   productSlug: string
   productName: string
   unitPrice: number
   currency: string
+  availableQuantity?: number | null
+  allowBackorder?: boolean
+  isSoldOut?: boolean
+  limitPerOrder?: number
+  purchaseMessage?: string
+  sku?: string
 }) {
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
@@ -23,6 +35,8 @@ export function OrderForm({
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const maxQuantity =
+    typeof availableQuantity === 'number' && !allowBackorder ? Math.max(1, availableQuantity) : undefined
   const totalAmount = unitPrice * quantity
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -49,12 +63,12 @@ export function OrderForm({
       const result = (await response.json()) as { error?: string; orderNo?: string }
 
       if (!response.ok || !result.orderNo) {
-        throw new Error(result.error || 'ORDER_CREATE_FAILED')
+        throw new Error(mapOrderCreateError(result.error || 'ORDER_CREATE_FAILED'))
       }
 
       router.push(`/shop/checkout-success?orderNo=${encodeURIComponent(result.orderNo)}`)
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'ORDER_CREATE_FAILED')
+      setError(submitError instanceof Error ? submitError.message : mapOrderCreateError('ORDER_CREATE_FAILED'))
     } finally {
       setSubmitting(false)
     }
@@ -71,21 +85,37 @@ export function OrderForm({
       <div>
         <p style={{ margin: 0, color: '#6f6661', fontSize: 13 }}>商品</p>
         <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{productName}</p>
+        {sku ? <p style={{ margin: '6px 0 0', color: '#6f6661', fontSize: 13 }}>SKU：{sku}</p> : null}
+      </div>
+
+      <div
+        style={{
+          borderRadius: 16,
+          background: isSoldOut ? '#fff1f0' : '#faf5f3',
+          padding: 14,
+          color: '#4f4742',
+          lineHeight: 1.7,
+        }}
+      >
+        <strong style={{ display: 'block', color: '#1d1a17' }}>{isSoldOut ? '当前不可下单' : '购买说明'}</strong>
+        <p style={{ margin: '8px 0 0' }}>{purchaseMessage || '当前可直接下单。'}</p>
+        {typeof availableQuantity === 'number' ? <p style={{ margin: '8px 0 0', fontSize: 13 }}>剩余可售：{availableQuantity} 件</p> : null}
+        {limitPerOrder ? <p style={{ margin: '4px 0 0', fontSize: 13 }}>单笔限购：{limitPerOrder} 件</p> : null}
       </div>
 
       <label style={labelStyle}>
         联系人
-        <input required value={customerName} onChange={(event) => setCustomerName(event.target.value)} style={inputStyle} />
+        <input disabled={isSoldOut} required value={customerName} onChange={(event) => setCustomerName(event.target.value)} style={inputStyle} />
       </label>
 
       <label style={labelStyle}>
         手机号
-        <input required value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} style={inputStyle} />
+        <input disabled={isSoldOut} required value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} style={inputStyle} />
       </label>
 
       <label style={labelStyle}>
         邮箱
-        <input type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} style={inputStyle} />
+        <input disabled={isSoldOut} type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} style={inputStyle} />
       </label>
 
       <label style={labelStyle}>
@@ -95,6 +125,7 @@ export function OrderForm({
           rows={4}
           value={shippingAddress}
           onChange={(event) => setShippingAddress(event.target.value)}
+          disabled={isSoldOut}
           style={{ ...inputStyle, resize: 'vertical' }}
         />
       </label>
@@ -103,9 +134,19 @@ export function OrderForm({
         数量
         <input
           min={1}
+          max={limitPerOrder || maxQuantity}
           type="number"
           value={quantity}
-          onChange={(event) => setQuantity(Math.max(1, Number(event.target.value) || 1))}
+          onChange={(event) =>
+            setQuantity(
+              normalizeQuantity({
+                nextValue: Number(event.target.value) || 1,
+                limitPerOrder,
+                maxQuantity,
+              }),
+            )
+          }
+          disabled={isSoldOut}
           style={inputStyle}
         />
       </label>
@@ -134,23 +175,57 @@ export function OrderForm({
       ) : null}
 
       <button
-        disabled={submitting}
+        disabled={submitting || Boolean(isSoldOut)}
         type="submit"
         style={{
           border: 0,
           borderRadius: 999,
-          background: '#b42318',
+          background: isSoldOut ? '#c8c3bf' : '#b42318',
           color: '#fff',
           height: 48,
           fontSize: 15,
           fontWeight: 700,
-          cursor: submitting ? 'progress' : 'pointer',
+          cursor: submitting ? 'progress' : isSoldOut ? 'not-allowed' : 'pointer',
         }}
       >
-        {submitting ? '正在创建订单...' : '提交订单'}
+        {submitting ? '正在创建订单...' : isSoldOut ? '当前不可下单' : '提交订单'}
       </button>
     </form>
   )
+}
+
+function normalizeQuantity(args: {
+  nextValue: number
+  limitPerOrder?: number
+  maxQuantity?: number
+}) {
+  let quantity = Math.max(1, Math.floor(args.nextValue))
+
+  if (args.limitPerOrder) {
+    quantity = Math.min(quantity, args.limitPerOrder)
+  }
+
+  if (typeof args.maxQuantity === 'number') {
+    quantity = Math.min(quantity, args.maxQuantity)
+  }
+
+  return quantity
+}
+
+function mapOrderCreateError(code: string) {
+  switch (code) {
+    case 'PRODUCT_SOLD_OUT':
+      return '当前商品库存不足或已售罄，请调整数量后重试。'
+    case 'PRODUCT_LIMIT_EXCEEDED':
+      return '当前商品超出单笔限购数量，请减少购买数量。'
+    case 'PRODUCT_NOT_FOUND':
+      return '商品不存在或暂未上架。'
+    case 'MISSING_REQUIRED_FIELDS':
+      return '请完整填写联系人、手机号和收货信息。'
+    case 'ORDER_CREATE_FAILED':
+    default:
+      return '订单创建失败，请稍后重试。'
+  }
 }
 
 const labelStyle = {
