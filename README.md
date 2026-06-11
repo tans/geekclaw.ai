@@ -1,31 +1,58 @@
 # geekclaw.ai
 
-当前仓库用于维护 `geekclaw.ai` 的线上内容。
+当前仓库用于维护 `geekclaw.ai` 的线上站点、后台和支付接入。
 
 ## 当前结构
 
+- `payload/`
+  - 当前主站与后台入口
+  - 基于 `Payload + Next.js`
+  - 承担官网、博客、普通页面、商品、订单、支付骨架与后台管理
 - `halo/`
-  - 当前线上官网入口
-  - 轻量静态站点，使用 `bun + node:http`
-  - 不依赖前端框架，不需要额外构建
+  - 备用静态站
+  - 用于保留轻量落地页与历史素材承接
 - `buytoken/`
   - 保留的独立项目
 - `geekclaw/`
   - 历史项目与素材保留区
 - `web/`
-  - 历史网站源码保留区，当前不作为线上入口
+  - 历史网站源码保留区，当前不作为生产入口
 
-## 当前线上入口
+## 当前运行状态
 
-当前 `geekclaw.ai` 使用 `halo` 目录运行。
+截至 `2026-06-11`，服务器上两个 PM2 进程都在线：
 
-- PM2 配置: `halo/ecosystem.config.cjs`
-- 默认端口: `26222`
-- 健康检查: `/health`
+- `payload-geekclaw`
+  - 当前主站服务
+  - PM2 配置：`payload/ecosystem.config.cjs`
+  - 端口：`26223`
+- `halo`
+  - 备用静态站
+  - PM2 配置：`halo/ecosystem.config.cjs`
+  - 端口：`26222`
+
+当前内容维护应以 `payload/` 为准。
 
 ## 启动方式
 
-在服务器上：
+主站：
+
+```bash
+cd /data/clawos/payload
+npm run build
+pm2 start ecosystem.config.cjs --only payload-geekclaw
+pm2 save
+```
+
+如已存在进程：
+
+```bash
+cd /data/clawos/payload
+npm run build
+pm2 restart payload-geekclaw
+```
+
+备用静态站：
 
 ```bash
 cd /data/clawos/halo
@@ -33,23 +60,17 @@ pm2 start ecosystem.config.cjs --only halo
 pm2 save
 ```
 
-本地直接运行：
+## 当前已确认能力
 
-```bash
-cd /data/clawos/halo
-bun run start
-```
-
-## 素材来源
-
-`halo/public/` 当前使用的以下素材来自历史 `geekclaw` 项目：
-
-- `logo.png`
-- `screenshot1.jpg`
-- `screenshot2.jpg`
+- `/admin` 后台可访问
+- `/blog` 博客列表可访问
+- `/bailongma` 专题页可访问
+- `pages` 集合中的普通页面，发布后可通过对应 `slug` 直接前台访问
+- 不存在的普通页面会正常返回 `404`
 
 ## 维护约定
 
-- 优先保持线上入口简单、稳定、可恢复
+- 以 `payload/` 作为当前生产代码主线维护
+- `halo/` 只作为备用和素材承接，不再作为主功能迭代入口
 - 不把 `node_modules`、`.env`、构建产物和无关大文件提交进仓库
-- 修改线上入口时，先更新本 README
+- 修改生产入口、端口、PM2 配置或路由能力时，先同步更新 README

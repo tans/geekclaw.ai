@@ -6,6 +6,8 @@ bun.lock
 clawos.json
 dist
 build
+**/.next/
+**/.payload/
 artifacts
 storage
 !geekclaw/storage/
@@ -20,7 +22,13 @@ tmp-dev-stderr-2.log
 tmp-dev-stdout-2.log
 data
 .env
+.env.*
 **/.env
+**/.env.*
+!.env.example
+!**/.env.example
+!.env.local.example
+!**/.env.local.example
 *.log
 nohup.out
 **/nohup.out
@@ -40,6 +48,9 @@ nohup.out
 !halo/public/logo.png
 !halo/public/screenshot1.jpg
 !halo/public/screenshot2.jpg
+!halo/public/delivery-ui.webp
+!halo/public/deployment-ui.webp
+!halo/public/team-ui.webp
 
 # Mission runtime artifacts
 mission/data/

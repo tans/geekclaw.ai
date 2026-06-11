@@ -1,0 +1,32 @@
+{
+  "name": "geekclaw-payload",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation node --experimental-strip-types src/scripts/seed.ts"
+  },
+  "dependencies": {
+    "@payloadcms/db-sqlite": "3.85.1",
+    "@payloadcms/next": "3.85.1",
+    "@payloadcms/richtext-lexical": "3.85.1",
+    "alipay-sdk": "^4.14.0",
+    "cross-env": "^7.0.3",
+    "graphql": "^16.9.0",
+    "next": "15.4.11",
+    "payload": "3.85.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "cli-color": "^2.0.4",
+    "typescript": "^5.7.2"
+  }
+}

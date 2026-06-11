@@ -1,0 +1,33 @@
+:root {
+  --gc-bg: #fcfbfa;
+  --gc-bg-soft: #f4efec;
+  --gc-text: #1d1a17;
+  --gc-text-soft: #6f6661;
+  --gc-accent: #b42318;
+  --gc-accent-soft: color-mix(in srgb, var(--gc-accent) 14%, white);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    "Plus Jakarta Sans",
+    "PingFang SC",
+    "Microsoft YaHei",
+    system-ui,
+    sans-serif;
+  color: var(--gc-text);
+  background: var(--gc-bg);
+}
+
+a {
+  color: inherit;
+}

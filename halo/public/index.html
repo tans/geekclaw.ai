@@ -3,66 +3,131 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GeekClaw | 极客超算魔方</title>
+    <title>GeekClaw | 企业 AI 部署解决方案</title>
     <meta
       name="description"
-      content="GeekClaw AI 智能体电脑。保留原有视觉素材，使用轻量 Halo 版本稳定承载官网。"
+      content="GeekClaw 帮助企业完成 AI 能力的部署、接入、治理与长期运行，使用轻量官网承载核心内容。"
     />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <main class="page">
-      <div class="backdrop">
-        <div class="hero-grid"></div>
-        <div class="orb orb-left"></div>
-        <div class="orb orb-right"></div>
-        <div class="orb orb-core"></div>
-      </div>
-
-      <header class="topbar">
-        <div class="brand">
+    <header class="site-header">
+      <div class="nav">
+        <a href="/" class="brand">
           <img src="/logo.png" alt="GeekClaw Logo" class="brand-logo" />
-          <div>
-            <p class="brand-title">GeekClaw</p>
-            <p class="brand-subtitle">AI 智能体电脑</p>
+          <span>GeekClaw</span>
+        </a>
+        <nav class="nav-links">
+          <a href="#capabilities">能力</a>
+          <a href="#deployment">部署</a>
+          <a href="#scenarios">场景</a>
+          <a href="#contact">联系</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Enterprise AI Deployment</p>
+          <h1>企业级 AI 智能体落地方案</h1>
+          <p class="lead">
+            GeekClaw 让 AI 进入真实业务流程。重点不是演示，而是部署、接入、权限治理与长期稳定运行。
+          </p>
+          <div class="actions">
+            <a href="mailto:team@geekclaw.ai" class="button button-primary">联系团队</a>
+            <a href="#deployment" class="button button-secondary">了解部署方式</a>
           </div>
         </div>
-        <a href="mailto:team@geekclaw.ai" class="button button-primary">联系团队</a>
-      </header>
-
-      <section class="hero-copy">
-        <p class="eyebrow">GEEKCLAW</p>
-        <h1>极客超算魔方</h1>
-        <p class="lead">
-          保留原有视觉内容，先用轻量、干净、稳定的方式承载官网。
-        </p>
+        <div class="hero-visual card">
+          <img src="/delivery-ui.webp" alt="GeekClaw 交付形态" />
+        </div>
       </section>
 
-      <section class="shot-card shot-card-first">
-        <img
-          src="/screenshot1.jpg"
-          alt="GeekClaw 产品视觉图"
-          class="hero-shot"
-          loading="eager"
-          decoding="async"
-        />
+      <section id="capabilities" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Core Capability</p>
+          <h2>核心能力</h2>
+          <p>聚焦企业团队真正关心的三件事：数据可控、系统接入、权限可管。</p>
+        </div>
+        <div class="grid grid-3">
+          <article class="card feature-card">
+            <span class="index">01</span>
+            <h3>私有部署</h3>
+            <p>数据留在本地或可控网络边界，适合对安全和合规有明确要求的团队。</p>
+          </article>
+          <article class="card feature-card">
+            <span class="index">02</span>
+            <h3>技能接入</h3>
+            <p>把内部工具、流程和数据接入 AI，让它能真正执行任务，而不是只做对话。</p>
+          </article>
+          <article class="card feature-card">
+            <span class="index">03</span>
+            <h3>权限与审计</h3>
+            <p>谁能做什么、做了什么，全部留痕，便于内部治理和后期维护。</p>
+          </article>
+        </div>
       </section>
 
-      <section class="shot-card shot-card-second">
-        <div class="shot-glow"></div>
-        <img
-          src="/screenshot2.jpg"
-          alt="极客超算魔方发布海报"
-          class="hero-shot poster-shot"
-          loading="lazy"
-          decoding="async"
-        />
-        <div class="info-panel">
-          <h2>当前站点状态</h2>
+      <section id="deployment" class="section split-section">
+        <div class="section-copy">
+          <p class="eyebrow">Deployment Model</p>
+          <h2>软件与硬件一体化交付</h2>
           <p>
-            已从混乱的旧入口切回精简官网形态，当前版本不再依赖原先的大型站点工程。
+            沿用原 `web` 站点的核心定位：不是单纯卖模型，而是提供从系统部署、能力接入到交付运行的完整路径。
           </p>
+          <ul class="bullet-list">
+            <li>本地优先，降低数据外流风险</li>
+            <li>硬件与系统组合交付，到手即用</li>
+            <li>支持后续扩展 Agent、流程与任务协作</li>
+          </ul>
+        </div>
+        <div class="stack">
+          <div class="card visual-card">
+            <img src="/deployment-ui.webp" alt="GeekClaw 部署方式" />
+          </div>
+          <div class="card text-card">
+            <h3>交付路径</h3>
+            <p>部署前先确认业务切入点、系统接入边界和运维责任，再进入实施。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="scenarios" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Use Cases</p>
+          <h2>适用场景</h2>
+          <p>适合已经明确知道 AI 要进入哪个业务流程、但还在评估如何落地的团队。</p>
+        </div>
+        <div class="grid grid-2">
+          <article class="card scenario-card">
+            <h3>销售与客户运营</h3>
+            <p>把客户跟进、信息整理和常规响应交给 AI，减少等待和遗漏。</p>
+          </article>
+          <article class="card scenario-card">
+            <h3>制造与交付协同</h3>
+            <p>让询价、交付追踪与跨角色协同流程更标准，信息同步更及时。</p>
+          </article>
+          <article class="card scenario-card">
+            <h3>内部支持与知识库</h3>
+            <p>把制度、文档和流程沉淀成 AI 可调用的能力，减少重复搜索和沟通成本。</p>
+          </article>
+          <article class="card visual-card">
+            <img src="/team-ui.webp" alt="GeekClaw 适用团队" />
+          </article>
+        </div>
+      </section>
+
+      <section id="contact" class="section">
+        <div class="cta card">
+          <div>
+            <p class="eyebrow">Next Step</p>
+            <h2>先确定怎么用起来，再决定怎么部署</h2>
+            <p>
+              当前官网已切换到轻量版本，保留 GeekClaw 品牌素材，同时以 `web` 原有官网内容为主干重新组织。
+            </p>
+          </div>
           <div class="actions">
             <a href="mailto:team@geekclaw.ai" class="button button-primary">商务联系</a>
             <a href="/health" class="button button-secondary">健康检查</a>
