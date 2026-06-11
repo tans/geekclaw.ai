@@ -1,13 +1,17 @@
 import type { ServerProps } from 'payload'
-import { getPendingFulfillmentOrders, getRecentPaymentExceptions } from '@/lib/orders'
+import { PaymentReviewActions } from '@/components/admin/payment-review-actions'
+import { getPendingFulfillmentOrders, getRecentPaymentExceptions, getStaleProcessingOrders } from '@/lib/orders'
 import { getPaymentDiagnostics } from '@/lib/payment-diagnostics'
+import { getProcessingReviewMinutes } from '@/lib/payment-review'
 
 export default async function PaymentStatusPanel(_: ServerProps) {
   const diagnostics = await getPaymentDiagnostics()
-  const [recentExceptions, pendingFulfillmentOrders] = await Promise.all([
+  const [recentExceptions, pendingFulfillmentOrders, staleProcessingOrders] = await Promise.all([
     getRecentPaymentExceptions(),
     getPendingFulfillmentOrders(),
+    getStaleProcessingOrders(),
   ])
+  const processingReviewMinutes = getProcessingReviewMinutes()
 
   return (
     <section
@@ -128,6 +132,59 @@ export default async function PaymentStatusPanel(_: ServerProps) {
         <a href={buildPendingFulfillmentHref()} style={buttonSecondary}>
           待履约列表
         </a>
+      </div>
+
+      <div style={{ marginTop: 24, display: 'grid', gap: 10 }}>
+        <p style={{ margin: 0, fontWeight: 700, color: '#1d1a17' }}>支付中待复核订单</p>
+        {staleProcessingOrders.length ? (
+          staleProcessingOrders.map((order) => (
+            <div
+              key={order.id}
+              style={{
+                display: 'grid',
+                gap: 8,
+                border: '1px solid rgba(20,20,20,0.08)',
+                borderRadius: 16,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <strong>{order.orderNo}</strong>
+                <span style={{ color: '#7c4d12', fontWeight: 700 }}>
+                  processing 超过 {processingReviewMinutes} 分钟
+                </span>
+              </div>
+              <div style={{ color: '#4f4742', lineHeight: 1.7 }}>
+                <span>{order.customerName || '未填写联系人'}</span>
+                <span> · </span>
+                <span>¥{order.totalAmount.toLocaleString('zh-CN')}</span>
+                <span> · </span>
+                <span>最近更新：{formatDate(order.updatedAt)}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <a href={`/admin/collections/orders/${order.id}`} style={smallButtonPrimary}>
+                  订单详情
+                </a>
+                <a href={`/admin/collections/orders/${order.id}/payment-events`} style={smallButtonSecondary}>
+                  订单时间线
+                </a>
+              </div>
+              <PaymentReviewActions orderNo={order.orderNo} compact />
+            </div>
+          ))
+        ) : (
+          <div
+            style={{
+              borderRadius: 14,
+              background: '#f7f7f6',
+              padding: '12px 14px',
+              color: '#4f4742',
+              lineHeight: 1.7,
+            }}
+          >
+            当前没有需要人工复核的 processing 订单。
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 24, display: 'grid', gap: 10 }}>

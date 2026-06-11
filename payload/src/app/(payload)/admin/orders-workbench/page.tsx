@@ -1,14 +1,19 @@
 import Link from 'next/link'
 import { CancelOrderButton } from '@/components/cancel-order-button'
+import { PaymentReviewActions } from '@/components/admin/payment-review-actions'
 import { WorkbenchOrderActions } from '@/components/admin/workbench-order-actions'
-import { getPendingFulfillmentOrders, getPendingPaymentOrders, getRecentPaymentExceptions } from '@/lib/orders'
+import { getPendingFulfillmentOrders, getPendingPaymentOrders, getRecentPaymentExceptions, getStaleProcessingOrders } from '@/lib/orders'
+import { getProcessingReviewMinutes } from '@/lib/payment-review'
+import type { ReactNode } from 'react'
 
 export default async function OrdersWorkbenchPage() {
-  const [pendingPayments, pendingFulfillment, paymentExceptions] = await Promise.all([
+  const [pendingPayments, pendingFulfillment, paymentExceptions, staleProcessingOrders] = await Promise.all([
     getPendingPaymentOrders(12),
     getPendingFulfillmentOrders(12),
     getRecentPaymentExceptions(12),
+    getStaleProcessingOrders(12),
   ])
+  const processingReviewMinutes = getProcessingReviewMinutes()
 
   return (
     <main
@@ -58,7 +63,17 @@ export default async function OrdersWorkbenchPage() {
         <MetricCard label="待支付/支付中" value={String(pendingPayments.length)} tone="#8a5b12" />
         <MetricCard label="待履约" value={String(pendingFulfillment.length)} tone="#265b35" />
         <MetricCard label="异常/处理中" value={String(paymentExceptions.length)} tone="#b42318" />
+        <MetricCard label="超时待复核" value={String(staleProcessingOrders.length)} tone="#7c4d12" />
       </section>
+
+      <QueueSection
+        title="支付中待复核"
+        description={`支付状态停留在 processing 超过 ${processingReviewMinutes} 分钟的订单，建议人工确认是否到账。`}
+        emptyText="当前没有超时待复核的支付中订单。"
+        orders={staleProcessingOrders}
+        viewAllHref={buildOrdersFilterHref({ paymentStatus: 'processing' })}
+        renderExtra={(order) => <PaymentReviewActions orderNo={order.orderNo} />}
+      />
 
       <QueueSection
         title="待支付 / 支付中"
@@ -93,6 +108,7 @@ function QueueSection({
   emptyText,
   orders,
   viewAllHref,
+  renderExtra,
 }: {
   title: string
   description: string
@@ -113,6 +129,21 @@ function QueueSection({
     updatedAt: string
   }>
   viewAllHref: string
+  renderExtra?: (order: {
+    id: number
+    orderNo: string
+    customerName?: string | null
+    customerPhone?: string | null
+    totalAmount: number
+    paymentStatus: string
+    fulfillmentStatus?: string | null
+    deliveryMethod?: string | null
+    trackingNo?: string | null
+    deliveryNote?: string | null
+    operatorNote?: string | null
+    paidAt?: string | null
+    updatedAt: string
+  }) => ReactNode
 }) {
   return (
     <section
@@ -195,6 +226,7 @@ function QueueSection({
                   operatorNote={typeof order.operatorNote === 'string' ? order.operatorNote : ''}
                 />
               ) : null}
+              {renderExtra ? renderExtra(order) : null}
             </article>
           ))}
         </div>

@@ -237,6 +237,7 @@ function labelEventType(value: OrderPaymentEvent['type']) {
       notify_error: '回调异常',
       order_cancelled: '订单取消',
       order_expired: '订单超时关闭',
+      payment_review_requested: '支付复核',
       fulfillment_updated: '履约更新',
       operator_note_updated: '运营备注更新',
     }[value] || value

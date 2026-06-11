@@ -3,6 +3,7 @@ import config from '@/payload.config'
 import { ensureOrdersSchema } from '@/lib/order-schema'
 import { getUnpaidOrderExpireCutoff, getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
 import { createAlipayPaymentOrder } from '@/lib/payment'
+import { getProcessingReviewCutoff, getProcessingReviewMinutes } from '@/lib/payment-review'
 import { ensureProductsSchema } from '@/lib/product-schema'
 import { getSiteData } from '@/lib/site'
 
@@ -22,6 +23,7 @@ export type OrderPaymentEvent = {
     | 'payment_failed'
     | 'order_cancelled'
     | 'order_expired'
+    | 'payment_review_requested'
     | 'notify_invalid'
     | 'notify_received'
     | 'notify_error'
@@ -412,6 +414,64 @@ export async function markOrderFailed(args: {
   return updated
 }
 
+export async function reviewProcessingOrder(args: {
+  orderNo: string
+  outcome: 'paid' | 'failed'
+  reason?: string
+}) {
+  const order = await getOrderByOrderNo(args.orderNo)
+
+  if (!order) {
+    throw new Error('ORDER_NOT_FOUND')
+  }
+
+  if (order.status === 'cancelled') {
+    throw new Error('ORDER_CANCELLED')
+  }
+
+  if (order.paymentStatus !== 'processing') {
+    throw new Error('ORDER_NOT_PROCESSING')
+  }
+
+  await appendOrderPaymentEvent(args.orderNo, {
+    createdAt: new Date().toISOString(),
+    source: 'operator',
+    type: 'payment_review_requested',
+    message: args.reason || `运营已手动复核支付状态：${args.outcome === 'paid' ? '确认已支付' : '标记支付失败'}。`,
+    status: args.outcome,
+    payload: {
+      outcome: args.outcome,
+      reason: args.reason || null,
+      reviewThresholdMinutes: getProcessingReviewMinutes(),
+    },
+  })
+
+  if (args.outcome === 'paid') {
+    return markOrderPaid({
+      orderNo: args.orderNo,
+      source: 'operator',
+      message: args.reason || '运营复核后手动确认该支付单已完成。',
+      paymentPayload: {
+        provider: 'manual-review',
+        outcome: 'paid',
+        reviewedAt: new Date().toISOString(),
+      },
+    })
+  }
+
+  return markOrderFailed({
+    orderNo: args.orderNo,
+    source: 'operator',
+    message: args.reason || '运营复核后将该支付单标记为失败。',
+    status: 'manual_review_failed',
+    paymentPayload: {
+      provider: 'manual-review',
+      outcome: 'failed',
+      reviewedAt: new Date().toISOString(),
+    },
+  })
+}
+
 export async function cancelOrder(args: {
   orderNo: string
   source?: OrderPaymentEvent['source']
@@ -574,6 +634,36 @@ export async function getRecentPaymentExceptions(limit = 5) {
         {
           paymentStatus: {
             equals: 'processing',
+          },
+        },
+      ],
+    },
+  })
+
+  return result.docs
+}
+
+export async function getStaleProcessingOrders(limit = 10) {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+  const cutoff = getProcessingReviewCutoff()
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 0,
+    limit,
+    pagination: false,
+    sort: 'updatedAt',
+    where: {
+      and: [
+        {
+          paymentStatus: {
+            equals: 'processing',
+          },
+        },
+        {
+          updatedAt: {
+            less_than: cutoff.toISOString(),
           },
         },
       ],
