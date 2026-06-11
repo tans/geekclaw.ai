@@ -2,7 +2,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { ensureOrdersSchema } from '@/lib/order-schema'
 import { getUnpaidOrderExpireCutoff, getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
-import { createAlipayPaymentOrder } from '@/lib/payment'
+import { createAlipayPaymentOrder, queryAlipayPaymentOrder } from '@/lib/payment'
 import { getProcessingReviewCutoff, getProcessingReviewMinutes } from '@/lib/payment-review'
 import { ensureProductsSchema } from '@/lib/product-schema'
 import { getSiteData } from '@/lib/site'
@@ -470,6 +470,82 @@ export async function reviewProcessingOrder(args: {
       reviewedAt: new Date().toISOString(),
     },
   })
+}
+
+export async function syncProcessingOrderFromProvider(args: {
+  orderNo: string
+}) {
+  const order = await getOrderByOrderNo(args.orderNo)
+
+  if (!order) {
+    throw new Error('ORDER_NOT_FOUND')
+  }
+
+  if (order.status === 'cancelled') {
+    throw new Error('ORDER_CANCELLED')
+  }
+
+  if (order.paymentStatus !== 'processing') {
+    throw new Error('ORDER_NOT_PROCESSING')
+  }
+
+  const site = await getSiteData()
+  const canQuery = Boolean(site.payment.appId && site.payment.privateKey && site.payment.publicKey)
+  const query = await queryAlipayPaymentOrder({
+    mode: canQuery ? 'query' : 'mock',
+    appId: site.payment.appId,
+    privateKey: site.payment.privateKey,
+    publicKey: site.payment.publicKey,
+    gateway: site.payment.gateway,
+    orderNo: args.orderNo,
+  })
+
+  await appendOrderPaymentEvent(args.orderNo, {
+    createdAt: new Date().toISOString(),
+    source: 'operator',
+    type: 'payment_review_requested',
+    message: query.isMock ? '运营触发了查单，但当前仍是 mock 配置。' : '运营触发了支付宝主动查单。',
+    status: query.tradeStatus || 'query_pending',
+    payload: query.raw,
+  })
+
+  if (query.tradeStatus === 'TRADE_SUCCESS' || query.tradeStatus === 'TRADE_FINISHED') {
+    const updated = await markOrderPaid({
+      orderNo: args.orderNo,
+      tradeNo: query.tradeNo,
+      source: 'operator',
+      message: '支付宝主动查单确认支付成功，系统已同步更新订单。',
+      paymentPayload: query.raw,
+    })
+
+    return {
+      action: 'marked_paid' as const,
+      order: updated,
+      query,
+    }
+  }
+
+  if (query.tradeStatus === 'TRADE_CLOSED') {
+    const updated = await markOrderFailed({
+      orderNo: args.orderNo,
+      source: 'operator',
+      message: '支付宝主动查单确认交易已关闭，系统已同步更新订单。',
+      status: 'TRADE_CLOSED',
+      paymentPayload: query.raw,
+    })
+
+    return {
+      action: 'marked_failed' as const,
+      order: updated,
+      query,
+    }
+  }
+
+  return {
+    action: 'no_change' as const,
+    order,
+    query,
+  }
 }
 
 export async function cancelOrder(args: {

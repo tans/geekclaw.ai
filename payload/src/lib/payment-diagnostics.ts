@@ -1,5 +1,6 @@
 import { getRawSitePaymentConfig, getSiteData, siteFallback } from '@/lib/site'
 import { getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
+import { getProcessingReviewMinutes } from '@/lib/payment-review'
 
 type ConfigSource = 'env' | 'site-settings' | 'fallback' | 'missing'
 
@@ -12,6 +13,11 @@ export type PaymentDiagnostics = {
     expireMinutes: number
     cronSecretConfigured: boolean
     closeExpiredApiPath: string
+  }
+  processingReview: {
+    reviewMinutes: number
+    queryEnabled: boolean
+    queryApiPath: string
   }
   appId: {
     configured: boolean
@@ -140,6 +146,11 @@ export async function getPaymentDiagnostics(): Promise<PaymentDiagnostics> {
       expireMinutes: getUnpaidOrderExpireMinutes(),
       cronSecretConfigured: Boolean((process.env.CRON_SECRET || '').trim()),
       closeExpiredApiPath: '/api/orders/close-expired',
+    },
+    processingReview: {
+      reviewMinutes: getProcessingReviewMinutes(),
+      queryEnabled: Boolean(site.payment.appId && site.payment.privateKey && site.payment.publicKey),
+      queryApiPath: '/api/orders/query-payment',
     },
     appId: {
       configured: Boolean(site.payment.appId.trim()),

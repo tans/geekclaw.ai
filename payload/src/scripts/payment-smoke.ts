@@ -85,6 +85,18 @@ async function main() {
   }
   logStep('order remains non-paid after notify rejection')
 
+  const queryPayment = await postJson<{
+    action: 'no_change' | 'marked_paid' | 'marked_failed'
+    tradeStatus: string | null
+    isMock: boolean
+  }>(`${baseUrl}/api/orders/query-payment`, {
+    orderNo: order.orderNo,
+  })
+  if (queryPayment.action !== 'no_change') {
+    throw new Error(`expected query-payment to keep processing order unchanged in smoke, got ${queryPayment.action}`)
+  }
+  logStep(`query payment returned action=${queryPayment.action} mock=${queryPayment.isMock}`)
+
   const expiredOrder = await createOrder()
   await backdateOrder(expiredOrder.orderNo, 45)
   const closeExpired = await postAuthorizedJson<{ closedCount: number; closedOrderNos: string[] }>(

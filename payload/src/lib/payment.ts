@@ -23,6 +23,24 @@ export type CreatePaymentOrderResult = {
   payload: Record<string, unknown>
 }
 
+export type QueryPaymentOrderInput = {
+  mode?: 'mock' | 'query'
+  appId?: string
+  gateway?: string
+  privateKey?: string
+  publicKey?: string
+  orderNo: string
+}
+
+export type QueryPaymentOrderResult = {
+  provider: PaymentProvider
+  isMock: boolean
+  tradeStatus: string | null
+  tradeNo?: string
+  buyerPayAmount?: string
+  raw: Record<string, unknown>
+}
+
 export async function createAlipayPaymentOrder(
   input: CreatePaymentOrderInput,
 ): Promise<CreatePaymentOrderResult> {
@@ -93,6 +111,56 @@ export async function createAlipayPaymentOrder(
       notifyUrl: input.notifyUrl,
       returnUrl: input.returnUrl,
       mode,
+    },
+  }
+}
+
+export async function queryAlipayPaymentOrder(
+  input: QueryPaymentOrderInput,
+): Promise<QueryPaymentOrderResult> {
+  const mode = input.mode || 'mock'
+
+  if (mode === 'query') {
+    const appId = input.appId?.trim()
+    const privateKey = input.privateKey?.trim()
+    const publicKey = input.publicKey?.trim()
+
+    if (appId && privateKey && publicKey) {
+      const sdk = new AlipaySdk({
+        appId,
+        privateKey,
+        alipayPublicKey: publicKey,
+        gateway: input.gateway || 'https://openapi.alipay.com/gateway.do',
+      })
+
+      const result = await sdk.exec('alipay.trade.query', {
+        bizContent: {
+          outTradeNo: input.orderNo,
+        },
+      })
+
+      const response = ((result as Record<string, unknown>).alipayTradeQueryResponse ||
+        result) as Record<string, unknown>
+
+      return {
+        provider: 'alipay',
+        isMock: false,
+        tradeStatus: typeof response.tradeStatus === 'string' ? response.tradeStatus : null,
+        tradeNo: typeof response.tradeNo === 'string' ? response.tradeNo : undefined,
+        buyerPayAmount: typeof response.buyerPayAmount === 'string' ? response.buyerPayAmount : undefined,
+        raw: response,
+      }
+    }
+  }
+
+  return {
+    provider: 'alipay',
+    isMock: true,
+    tradeStatus: null,
+    raw: {
+      mode,
+      orderNo: input.orderNo,
+      reason: 'missing_real_payment_config',
     },
   }
 }

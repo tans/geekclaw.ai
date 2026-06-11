@@ -11,8 +11,37 @@ export function PaymentReviewActions({
   compact?: boolean
 }) {
   const router = useRouter()
-  const [pending, setPending] = useState<'paid' | 'failed' | null>(null)
+  const [pending, setPending] = useState<'query' | 'paid' | 'failed' | null>(null)
   const [error, setError] = useState('')
+
+  async function queryPayment() {
+    setPending('query')
+    setError('')
+
+    try {
+      const response = await fetch('/api/orders/query-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderNo,
+        }),
+      })
+
+      const result = (await response.json()) as { error?: string }
+
+      if (!response.ok) {
+        throw new Error(mapReviewError(result.error || 'PAYMENT_QUERY_FAILED'))
+      }
+
+      router.refresh()
+    } catch (queryError) {
+      setError(queryError instanceof Error ? queryError.message : mapReviewError('PAYMENT_QUERY_FAILED'))
+    } finally {
+      setPending(null)
+    }
+  }
 
   async function submitReview(outcome: 'paid' | 'failed') {
     setPending(outcome)
@@ -51,6 +80,9 @@ export function PaymentReviewActions({
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button type="button" onClick={queryPayment} disabled={pending !== null} style={compact ? compactNeutral : neutralButton}>
+          {pending === 'query' ? '查单中...' : '先查单'}
+        </button>
         <button type="button" onClick={() => submitReview('paid')} disabled={pending !== null} style={compact ? compactSuccess : successButton}>
           {pending === 'paid' ? '确认中...' : '确认已支付'}
         </button>
@@ -71,6 +103,8 @@ function mapReviewError(code: string) {
       return '订单已取消，不能再做支付复核。'
     case 'ORDER_NOT_FOUND':
       return '订单不存在。'
+    case 'PAYMENT_QUERY_FAILED':
+      return '主动查单失败，请稍后重试。'
     case 'PAYMENT_REVIEW_FAILED':
     default:
       return '支付复核失败，请稍后重试。'
@@ -101,6 +135,13 @@ const dangerButton = {
   color: '#fff',
 } as const
 
+const neutralButton = {
+  ...baseButton,
+  background: '#fff',
+  color: '#1d1a17',
+  border: '1px solid rgba(20,20,20,0.12)',
+} as const
+
 const compactSuccess = {
   ...successButton,
   minWidth: 96,
@@ -111,6 +152,13 @@ const compactSuccess = {
 const compactDanger = {
   ...dangerButton,
   minWidth: 96,
+  padding: '8px 12px',
+  fontSize: 13,
+} as const
+
+const compactNeutral = {
+  ...neutralButton,
+  minWidth: 86,
   padding: '8px 12px',
   fontSize: 13,
 } as const

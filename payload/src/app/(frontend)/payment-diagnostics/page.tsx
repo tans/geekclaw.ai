@@ -39,6 +39,11 @@ export default async function PaymentDiagnosticsPage() {
               value={`${diagnostics.orderExpiry.expireMinutes} 分钟`}
               hint={diagnostics.orderExpiry.cronSecretConfigured ? '已配置 cron 保护口令' : '未配置 cron 保护口令'}
             />
+            <Card
+              title="支付复核"
+              value={`${diagnostics.processingReview.reviewMinutes} 分钟`}
+              hint={diagnostics.processingReview.queryEnabled ? '已具备主动查单条件' : '当前只能人工复核'}
+            />
           </div>
 
           <div style={{ marginTop: 28, display: 'grid', gap: 14 }}>
@@ -53,6 +58,11 @@ export default async function PaymentDiagnosticsPage() {
               label="超时关闭接口"
               value={diagnostics.orderExpiry.closeExpiredApiPath}
               source={diagnostics.orderExpiry.cronSecretConfigured ? 'protected' : 'secret-missing'}
+            />
+            <DetailRow
+              label="主动查单接口"
+              value={diagnostics.processingReview.queryApiPath}
+              source={diagnostics.processingReview.queryEnabled ? 'enabled' : 'mock-only'}
             />
           </div>
 

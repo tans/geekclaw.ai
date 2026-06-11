@@ -56,6 +56,11 @@ export default async function PaymentStatusPanel(_: ServerProps) {
           value={`${diagnostics.orderExpiry.expireMinutes} 分钟`}
           meta={diagnostics.orderExpiry.cronSecretConfigured ? 'cron protected' : 'secret missing'}
         />
+        <Card
+          title="支付复核"
+          value={`${diagnostics.processingReview.reviewMinutes} 分钟`}
+          meta={diagnostics.processingReview.queryEnabled ? 'query enabled' : 'manual only'}
+        />
       </div>
 
       <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
@@ -82,6 +87,20 @@ export default async function PaymentStatusPanel(_: ServerProps) {
         >
           当前未支付订单会在 {diagnostics.orderExpiry.expireMinutes} 分钟后自动关闭。可通过 `POST {diagnostics.orderExpiry.closeExpiredApiPath}`
           配合 `Authorization: Bearer $CRON_SECRET` 触发。
+        </div>
+        <div
+          style={{
+            borderRadius: 14,
+            background: '#f7f7f6',
+            padding: '12px 14px',
+            color: '#4f4742',
+            lineHeight: 1.7,
+          }}
+        >
+          支付中的订单若超过 {diagnostics.processingReview.reviewMinutes} 分钟未确认，会进入待复核队列。
+          {diagnostics.processingReview.queryEnabled
+            ? ` 当前支持先调用 ${diagnostics.processingReview.queryApiPath} 主动查单，再决定是否人工确认。`
+            : ' 当前未配置真实支付宝密钥，因此只能人工复核。'}
         </div>
         {diagnostics.warnings.length ? (
           diagnostics.warnings.map((warning) => (

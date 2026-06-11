@@ -66,7 +66,6 @@ const legacySiteDescription = 'GeekClaw 内容站、专题页、博客与商城�
 const legacyAiDescription = 'GeekClaw 帮助企业完成 AI 能力的部署、接入、权限治理与长期运行。'
 const legacyFooterDescription = '企业 AI 内容站、专题页、博客和商品后台将统一由 Payload 管理。'
 const legacyPrimaryColor = '#b42318'
-const legacyNavSignature = '首页|/|白龙马|/bailongma|博客|/blog|商城|/shop'
 const legacyAiNavSignature = '首页|/|部署方案|/#deployment|博客|/blog|商城|/shop'
 
 export async function getSiteData(): Promise<SiteData> {
@@ -152,7 +151,9 @@ export async function getSiteData(): Promise<SiteData> {
 
 function isLegacyNavigation(navigation: NavItem[]) {
   const signature = navigation.map((item) => `${item.label}|${item.href}`).join('|')
-  return signature === legacyNavSignature || signature === legacyAiNavSignature
+  const hasLegacyCompatibilityRoute = navigation.some((item) => item.href === '/bailongma')
+
+  return hasLegacyCompatibilityRoute || signature === legacyAiNavSignature
 }
 
 function resolveMedia(value: number | Media | null | undefined) {
