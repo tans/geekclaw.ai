@@ -9,6 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
     title: site.seoTitle,
     description: site.seoDescription,
     metadataBase: new URL(site.siteUrl),
+    icons: {
+      icon: site.logo?.url || '/geekclaw-logo.png',
+      apple: site.logo?.url || '/geekclaw-logo.png',
+    },
     openGraph: {
       title: site.seoTitle,
       description: site.seoDescription,

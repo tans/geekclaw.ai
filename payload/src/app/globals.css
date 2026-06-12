@@ -65,13 +65,13 @@ a {
 
 .gc-site-logo,
 .gc-site-logo-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
 }
 
 .gc-site-logo {
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .gc-site-logo-mark {

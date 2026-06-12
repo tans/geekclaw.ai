@@ -85,7 +85,10 @@ export const defaultNavItems: NavItem[] = [
 export const siteFallback: SiteData = {
   siteName: 'GeekClaw',
   siteUrl: 'https://geekclaw.ai',
-  logo: null,
+  logo: {
+    url: '/geekclaw-logo.png',
+    alt: 'GeekClaw logo',
+  },
   contactEmail: 'team@geekclaw.ai',
   primaryColor: '#1457d9',
   seoTitle: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
