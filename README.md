@@ -91,3 +91,4 @@ pm2 save
 - `halo/` 只作为备用和素材承接，不再作为主功能迭代入口
 - 不把 `node_modules`、`.env`、构建产物和无关大文件提交进仓库
 - 修改生产入口、端口、PM2 配置或路由能力时，先同步更新 README
+- 每次修改线上内容或前台页面后，必须执行 `npm run build`、重启 `payload-geekclaw`，并用 `https://geekclaw.ai` 检查关键文案是否已更新
