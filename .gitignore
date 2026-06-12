@@ -45,6 +45,7 @@ nohup.out
 *.zip
 *.tar
 *.gz
+!payload/public/liloavatar-logo.png
 !halo/public/logo.png
 !halo/public/screenshot1.jpg
 !halo/public/screenshot2.jpg
