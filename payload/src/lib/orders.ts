@@ -1,5 +1,7 @@
 import { getPayload } from 'payload'
+import type { Where } from 'payload'
 import config from '@/payload.config'
+import { buildOrderPaymentChainFieldPatch } from '@/lib/order-payment-labels'
 import { ensureOrdersSchema } from '@/lib/order-schema'
 import { getUnpaidOrderExpireCutoff, getUnpaidOrderExpireMinutes } from '@/lib/order-expiry'
 import { createAlipayPaymentOrder, queryAlipayPaymentOrder } from '@/lib/payment'
@@ -59,6 +61,21 @@ export type CreateOrderInput = {
   shippingAddress: string
   quantity: number
   source?: 'shop' | 'landing' | 'manual'
+}
+
+export type CreateManualOrderInput = {
+  productSlug: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+  shippingAddress: string
+  quantity: number
+  operatorNote?: string
+  markAsPaid?: boolean
+  startFulfillment?: boolean
+  deliveryMethod?: 'digital' | 'shipping' | 'service'
+  deliveryNote?: string
+  trackingNo?: string
 }
 
 export async function createOrder(input: CreateOrderInput) {
@@ -152,10 +169,78 @@ export async function createOrder(input: CreateOrderInput) {
   return {
     id: order.id,
     orderNo: order.orderNo,
-    totalAmount: order.totalAmount,
+    totalAmount: typeof order.totalAmount === 'number' ? order.totalAmount : totalAmount,
     productName: product.name,
     quantity,
   }
+}
+
+export async function createManualOrder(input: CreateManualOrderInput) {
+  const order = await createOrder({
+    productSlug: input.productSlug,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    customerEmail: input.customerEmail,
+    shippingAddress: input.shippingAddress,
+    quantity: input.quantity,
+    source: 'manual',
+  })
+
+  if (input.operatorNote?.trim()) {
+    await updateOrderOperatorNote({
+      orderNo: order.orderNo,
+      operatorNote: input.operatorNote,
+    })
+  }
+
+  if (input.markAsPaid) {
+    await markOrderPaid({
+      orderNo: order.orderNo,
+      source: 'operator',
+      message: '后台录单时已确认线下到账，订单直接标记为支付成功。',
+      paymentPayload: {
+        provider: 'manual-offline',
+        source: 'manual',
+        markedPaidAt: new Date().toISOString(),
+      },
+    })
+  }
+
+  if (input.markAsPaid && input.startFulfillment) {
+    await updateOrderFulfillment({
+      orderNo: order.orderNo,
+      fulfillmentStatus: 'processing',
+      deliveryMethod: input.deliveryMethod,
+      deliveryNote: input.deliveryNote,
+      trackingNo: input.trackingNo,
+    })
+  }
+
+  return {
+    ...order,
+    markedAsPaid: Boolean(input.markAsPaid),
+    fulfillmentStarted: Boolean(input.markAsPaid && input.startFulfillment),
+  }
+}
+
+function getOrderTotalAmount(order: {
+  totalAmount?: number | null
+  items?: Array<{
+    quantity?: number | null
+    unitPrice?: number | null
+  }> | null
+}) {
+  if (typeof order.totalAmount === 'number') {
+    return order.totalAmount
+  }
+
+  const items = Array.isArray(order.items) ? order.items : []
+
+  return items.reduce((sum, item) => {
+    const quantity = typeof item.quantity === 'number' ? item.quantity : 0
+    const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+    return sum + quantity * unitPrice
+  }, 0)
 }
 
 function getProductStockFields(product: {
@@ -276,7 +361,7 @@ export async function createOrderPayment(orderNo: string) {
     privateKey: site.payment.privateKey,
     publicKey: site.payment.publicKey,
     subject: productName,
-    amount: order.totalAmount,
+    amount: getOrderTotalAmount(order),
     notifyUrl: site.payment.notifyUrl,
     returnUrl: site.payment.returnUrl,
   })
@@ -290,6 +375,10 @@ export async function createOrderPayment(orderNo: string) {
       paymentOrderNo: order.orderNo,
       paymentPayload: payment.payload,
       paymentLastError: null,
+      ...buildOrderPaymentChainFieldPatch({
+        paymentEvents: order.paymentEvents,
+        paymentLastError: null,
+      }),
     },
   })
 
@@ -361,6 +450,10 @@ export async function markOrderPaid(args: {
       paymentPayload: args.paymentPayload || order.paymentPayload,
       paymentLastError: null,
       paidAt: new Date().toISOString(),
+      ...buildOrderPaymentChainFieldPatch({
+        paymentEvents: order.paymentEvents,
+        paymentLastError: null,
+      }),
     },
   })
 
@@ -399,6 +492,10 @@ export async function markOrderFailed(args: {
       paymentStatus: 'failed',
       paymentPayload: args.paymentPayload || order.paymentPayload,
       paymentLastError: args.message || '支付失败',
+      ...buildOrderPaymentChainFieldPatch({
+        paymentEvents: order.paymentEvents,
+        paymentLastError: args.message || '支付失败',
+      }),
     },
   })
 
@@ -548,6 +645,50 @@ export async function syncProcessingOrderFromProvider(args: {
   }
 }
 
+export async function syncStaleProcessingOrders(limit = 20) {
+  const staleOrders = await getStaleProcessingOrders(limit)
+  const results: Array<{
+    orderNo: string
+    action: 'no_change' | 'marked_paid' | 'marked_failed'
+    paymentStatus: string
+    tradeStatus: string | null
+    isMock: boolean
+  }> = []
+
+  for (const order of staleOrders) {
+    const synced = await syncProcessingOrderFromProvider({
+      orderNo: order.orderNo,
+    }).catch((error) => {
+      if (error instanceof Error && (error.message === 'ORDER_CANCELLED' || error.message === 'ORDER_NOT_PROCESSING')) {
+        return {
+          action: 'no_change' as const,
+          order,
+          query: {
+            isMock: true,
+            tradeStatus: null,
+          },
+        }
+      }
+
+      throw error
+    })
+
+    results.push({
+      orderNo: synced.order.orderNo,
+      action: synced.action,
+      paymentStatus: synced.order.paymentStatus,
+      tradeStatus: synced.query.tradeStatus,
+      isMock: synced.query.isMock,
+    })
+  }
+
+  return {
+    scannedCount: staleOrders.length,
+    results,
+    reviewMinutes: getProcessingReviewMinutes(),
+  }
+}
+
 export async function cancelOrder(args: {
   orderNo: string
   source?: OrderPaymentEvent['source']
@@ -577,6 +718,10 @@ export async function cancelOrder(args: {
       status: 'cancelled',
       paymentStatus: 'failed',
       paymentLastError: args.reason || '订单已取消',
+      ...buildOrderPaymentChainFieldPatch({
+        paymentEvents: order.paymentEvents,
+        paymentLastError: args.reason || '订单已取消',
+      }),
     },
   })
 
@@ -680,12 +825,17 @@ export async function appendOrderPaymentEvent(orderNo: string, event: OrderPayme
   }
 
   const currentEvents = normalizePaymentEvents(order.paymentEvents)
+  const nextEvents = [...currentEvents, event].slice(-20)
 
   return payload.update({
     collection: 'orders',
     id: order.id,
     data: {
-      paymentEvents: [...currentEvents, event].slice(-20),
+      paymentEvents: nextEvents,
+      ...buildOrderPaymentChainFieldPatch({
+        paymentEvents: nextEvents,
+        paymentLastError: order.paymentLastError || null,
+      }),
     },
   })
 }
@@ -710,6 +860,40 @@ export async function getRecentPaymentExceptions(limit = 5) {
         {
           paymentStatus: {
             equals: 'processing',
+          },
+        },
+      ],
+    },
+  })
+
+  return result.docs
+}
+
+export async function getRecentOrdersForPaymentObservability(limit = 20) {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 0,
+    limit,
+    pagination: false,
+    sort: '-updatedAt',
+    where: {
+      or: [
+        {
+          paymentStatus: {
+            equals: 'processing',
+          },
+        },
+        {
+          paymentStatus: {
+            equals: 'failed',
+          },
+        },
+        {
+          paymentStatus: {
+            equals: 'paid',
           },
         },
       ],
@@ -805,6 +989,528 @@ export async function getPendingPaymentOrders(limit = 5) {
   })
 
   return result.docs
+}
+
+export type OrderExportFilters = {
+  paymentStatus?: 'unpaid' | 'processing' | 'paid' | 'failed' | 'refunded'
+  fulfillmentStatus?: 'pending' | 'processing' | 'shipped' | 'completed'
+  source?: 'shop' | 'landing' | 'manual'
+  createdFrom?: string
+  createdTo?: string
+  limit?: number
+}
+
+export async function listOrdersForExport(filters: OrderExportFilters = {}) {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+
+  const andWhere: Where[] = []
+
+  if (filters.paymentStatus) {
+    andWhere.push({
+      paymentStatus: {
+        equals: filters.paymentStatus,
+      },
+    })
+  }
+
+  if (filters.fulfillmentStatus) {
+    andWhere.push({
+      fulfillmentStatus: {
+        equals: filters.fulfillmentStatus,
+      },
+    })
+  }
+
+  if (filters.source) {
+    andWhere.push({
+      source: {
+        equals: filters.source,
+      },
+    })
+  }
+
+  if (filters.createdFrom) {
+    andWhere.push({
+      createdAt: {
+        greater_than_equal: filters.createdFrom,
+      },
+    })
+  }
+
+  if (filters.createdTo) {
+    andWhere.push({
+      createdAt: {
+        less_than_equal: filters.createdTo,
+      },
+    })
+  }
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 1,
+    limit: Math.min(filters.limit || 200, 1000),
+    pagination: false,
+    sort: '-updatedAt',
+    where: andWhere.length ? { and: andWhere } : undefined,
+  })
+
+  return result.docs
+}
+
+export async function exportOrdersCsv(filters: OrderExportFilters = {}) {
+  const orders = await listOrdersForExport(filters)
+
+  const rows = orders.map((order) => {
+    const firstItem = Array.isArray(order.items) ? order.items[0] : null
+    const productName =
+      firstItem && typeof firstItem.product === 'object' && firstItem.product?.name
+        ? firstItem.product.name
+        : firstItem && typeof firstItem.product === 'number'
+          ? `#${firstItem.product}`
+          : ''
+
+    return [
+      order.orderNo,
+      order.status,
+      order.paymentStatus,
+      order.fulfillmentStatus || '',
+      order.source,
+      String(order.totalAmount ?? ''),
+      order.customerName || '',
+      order.customerPhone || '',
+      order.customerEmail || '',
+      order.shippingAddress || '',
+      productName,
+      String(firstItem?.quantity || ''),
+      String(firstItem?.unitPrice || ''),
+      order.deliveryMethod || '',
+      order.trackingNo || '',
+      order.operatorNote || '',
+      order.paymentLastError || '',
+      order.paidAt || '',
+      order.fulfilledAt || '',
+      order.updatedAt,
+      order.createdAt,
+    ]
+  })
+
+  const header = [
+    'orderNo',
+    'status',
+    'paymentStatus',
+    'fulfillmentStatus',
+    'source',
+    'totalAmount',
+    'customerName',
+    'customerPhone',
+    'customerEmail',
+    'shippingAddress',
+    'productName',
+    'quantity',
+    'unitPrice',
+    'deliveryMethod',
+    'trackingNo',
+    'operatorNote',
+    'paymentLastError',
+    'paidAt',
+    'fulfilledAt',
+    'updatedAt',
+    'createdAt',
+  ]
+
+  return [header, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n')
+}
+
+export async function exportProductSalesCsv(filters: OrderExportFilters = {}) {
+  const orders = await listOrdersForExport({
+    ...filters,
+    paymentStatus: 'paid',
+  })
+
+  const productStats = new Map<
+    string,
+    {
+      productName: string
+      orderCount: number
+      paidUnits: number
+      paidRevenue: number
+      lastPaidAt: string
+    }
+  >()
+
+  for (const order of orders) {
+    const items = Array.isArray(order.items) ? order.items : []
+    const paidAt = order.paidAt || ''
+
+    for (const item of items) {
+      const productName =
+        typeof item.product === 'object' && item.product?.name
+          ? item.product.name
+          : typeof item.product === 'number'
+            ? `#${item.product}`
+            : 'Unknown Product'
+
+      const current = productStats.get(productName) || {
+        productName,
+        orderCount: 0,
+        paidUnits: 0,
+        paidRevenue: 0,
+        lastPaidAt: '',
+      }
+
+      current.orderCount += 1
+      current.paidUnits += Number(item.quantity) || 0
+      current.paidRevenue += (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
+
+      if (paidAt && (!current.lastPaidAt || paidAt > current.lastPaidAt)) {
+        current.lastPaidAt = paidAt
+      }
+
+      productStats.set(productName, current)
+    }
+  }
+
+  const rows = Array.from(productStats.values())
+    .sort((left, right) => right.paidRevenue - left.paidRevenue)
+    .map((item) => [
+      item.productName,
+      String(item.orderCount),
+      String(item.paidUnits),
+      String(item.paidRevenue),
+      item.lastPaidAt,
+    ])
+
+  const header = ['productName', 'orderCount', 'paidUnits', 'paidRevenue', 'lastPaidAt']
+
+  return [header, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n')
+}
+
+function escapeCsvCell(value: string) {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replaceAll('"', '""')}"`
+  }
+
+  return value
+}
+
+export async function getLowStockProducts(limit = 6) {
+  ensureProductsSchema()
+  const payload = await getPayload({ config })
+
+  const result = await payload.find({
+    collection: 'products',
+    depth: 0,
+    limit: Math.max(limit * 3, 18),
+    pagination: false,
+    sort: 'stockQuantity',
+    where: {
+      and: [
+        {
+          status: {
+            equals: 'active',
+          },
+        },
+        {
+          trackInventory: {
+            equals: true,
+          },
+        },
+      ],
+    },
+  })
+
+  return result.docs
+    .filter((product) => {
+      const stockQuantity = typeof product.stockQuantity === 'number' ? product.stockQuantity : 0
+      const allowBackorder = Boolean(product.allowBackorder)
+      return stockQuantity <= 5 || !allowBackorder
+    })
+    .slice(0, limit)
+}
+
+export async function getMerchantOverview() {
+  ensureOrdersSchema()
+  ensureProductsSchema()
+  const payload = await getPayload({ config })
+
+  const [ordersResult, productsResult, pendingFulfillmentOrders, staleProcessingOrders, lowStockProducts] = await Promise.all([
+    payload.find({
+      collection: 'orders',
+      depth: 0,
+      limit: 500,
+      pagination: false,
+      sort: '-createdAt',
+    }),
+    payload.find({
+      collection: 'products',
+      depth: 0,
+      limit: 200,
+      pagination: false,
+    }),
+    getPendingFulfillmentOrders(6),
+    getStaleProcessingOrders(6),
+    getLowStockProducts(6),
+  ])
+
+  const orders = ordersResult.docs
+  const products = productsResult.docs
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const paidOrders = orders.filter((order) => order.paymentStatus === 'paid')
+  const paidRevenue30d = paidOrders.reduce((sum, order) => {
+    const paidAt = order.paidAt ? new Date(order.paidAt) : null
+    if (!paidAt || Number.isNaN(paidAt.getTime()) || paidAt < thirtyDaysAgo) {
+      return sum
+    }
+    return sum + (Number(order.totalAmount) || 0)
+  }, 0)
+
+  const pendingPaymentCount = orders.filter(
+    (order) => order.paymentStatus === 'unpaid' || order.paymentStatus === 'processing',
+  ).length
+
+  const todaysPaidOrders = paidOrders.filter((order) => {
+    const paidAt = order.paidAt ? new Date(order.paidAt) : null
+    if (!paidAt || Number.isNaN(paidAt.getTime())) {
+      return false
+    }
+
+    const now = new Date()
+    return (
+      paidAt.getFullYear() === now.getFullYear() &&
+      paidAt.getMonth() === now.getMonth() &&
+      paidAt.getDate() === now.getDate()
+    )
+  }).length
+
+  const activeProducts = products.filter((product) => product.status === 'active').length
+  const trackedInventoryProducts = products.filter((product) => Boolean(product.trackInventory)).length
+
+  return {
+    stats: {
+      totalOrders: orders.length,
+      pendingPaymentCount,
+      pendingFulfillmentCount: pendingFulfillmentOrders.length,
+      staleProcessingCount: staleProcessingOrders.length,
+      paidRevenue30d,
+      todaysPaidOrders,
+      activeProducts,
+      trackedInventoryProducts,
+      lowStockCount: lowStockProducts.length,
+    },
+    queues: {
+      pendingFulfillmentOrders,
+      staleProcessingOrders,
+      lowStockProducts,
+      recentPaidOrders: paidOrders.slice(0, 6),
+    },
+  }
+}
+
+export async function getMerchantAnalytics() {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 1,
+    limit: 500,
+    pagination: false,
+    sort: '-createdAt',
+  })
+
+  const orders = result.docs
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const recentOrders = orders.filter((order) => {
+    const createdAt = new Date(order.createdAt)
+    return !Number.isNaN(createdAt.getTime()) && createdAt >= thirtyDaysAgo
+  })
+
+  const paidOrders = recentOrders.filter((order) => order.paymentStatus === 'paid')
+  const failedOrders = recentOrders.filter((order) => order.paymentStatus === 'failed')
+  const processingOrders = recentOrders.filter((order) => order.paymentStatus === 'processing')
+  const unpaidOrders = recentOrders.filter((order) => order.paymentStatus === 'unpaid')
+
+  const revenue30d = paidOrders.reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0)
+  const avgOrderValue30d = paidOrders.length ? revenue30d / paidOrders.length : 0
+  const paymentSuccessRate30d = recentOrders.length ? paidOrders.length / recentOrders.length : 0
+  const paymentFailureRate30d = recentOrders.length ? failedOrders.length / recentOrders.length : 0
+  const pendingRate30d = recentOrders.length ? (processingOrders.length + unpaidOrders.length) / recentOrders.length : 0
+
+  const productStats = new Map<
+    string,
+    {
+      productName: string
+      paidUnits: number
+      paidRevenue: number
+    }
+  >()
+
+  for (const order of paidOrders) {
+    const items = Array.isArray(order.items) ? order.items : []
+
+    for (const item of items) {
+      const productName =
+        typeof item.product === 'object' && item.product?.name
+          ? item.product.name
+          : typeof item.product === 'number'
+            ? `#${item.product}`
+            : 'Unknown Product'
+
+      const current = productStats.get(productName) || {
+        productName,
+        paidUnits: 0,
+        paidRevenue: 0,
+      }
+
+      current.paidUnits += Number(item.quantity) || 0
+      current.paidRevenue += (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
+      productStats.set(productName, current)
+    }
+  }
+
+  const topProducts = Array.from(productStats.values())
+    .sort((left, right) => right.paidRevenue - left.paidRevenue)
+    .slice(0, 5)
+
+  return {
+    windowLabel: '近 30 天',
+    summary: {
+      totalOrders: recentOrders.length,
+      paidOrders: paidOrders.length,
+      failedOrders: failedOrders.length,
+      processingOrders: processingOrders.length,
+      unpaidOrders: unpaidOrders.length,
+      revenue30d,
+      avgOrderValue30d,
+      paymentSuccessRate30d,
+      paymentFailureRate30d,
+      pendingRate30d,
+    },
+    topProducts,
+  }
+}
+
+export async function getSalesFulfillmentReport() {
+  ensureOrdersSchema()
+  const payload = await getPayload({ config })
+
+  const result = await payload.find({
+    collection: 'orders',
+    depth: 1,
+    limit: 500,
+    pagination: false,
+    sort: '-createdAt',
+  })
+
+  const orders = result.docs
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(now.getDate() - 30)
+
+  const recentOrders = orders.filter((order) => {
+    const createdAt = new Date(order.createdAt)
+    return !Number.isNaN(createdAt.getTime()) && createdAt >= thirtyDaysAgo
+  })
+
+  const paidOrders = recentOrders.filter((order) => order.paymentStatus === 'paid')
+  const pendingFulfillmentOrders = paidOrders.filter((order) => order.fulfillmentStatus !== 'completed')
+  const completedFulfillmentOrders = paidOrders.filter((order) => order.fulfillmentStatus === 'completed')
+  const failedOrders = recentOrders.filter((order) => order.paymentStatus === 'failed')
+  const processingOrders = recentOrders.filter((order) => order.paymentStatus === 'processing')
+  const unpaidOrders = recentOrders.filter((order) => order.paymentStatus === 'unpaid')
+
+  const fulfillmentBuckets = {
+    pending: paidOrders.filter((order) => order.fulfillmentStatus === 'pending').length,
+    processing: paidOrders.filter((order) => order.fulfillmentStatus === 'processing').length,
+    shipped: paidOrders.filter((order) => order.fulfillmentStatus === 'shipped').length,
+    completed: completedFulfillmentOrders.length,
+  }
+
+  const totalRevenue = paidOrders.reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0)
+  const avgFulfillmentOrderValue = pendingFulfillmentOrders.length
+    ? pendingFulfillmentOrders.reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0) / pendingFulfillmentOrders.length
+    : 0
+
+  const productPerformance = new Map<
+    string,
+    {
+      productName: string
+      pendingUnits: number
+      completedUnits: number
+      paidUnits: number
+      paidRevenue: number
+      orderCount: number
+    }
+  >()
+
+  for (const order of paidOrders) {
+    const items = Array.isArray(order.items) ? order.items : []
+
+    for (const item of items) {
+      const productName =
+        typeof item.product === 'object' && item.product?.name
+          ? item.product.name
+          : typeof item.product === 'number'
+            ? `#${item.product}`
+            : 'Unknown Product'
+      const quantity = Number(item.quantity) || 0
+      const revenue = quantity * (Number(item.unitPrice) || 0)
+      const current = productPerformance.get(productName) || {
+        productName,
+        pendingUnits: 0,
+        completedUnits: 0,
+        paidUnits: 0,
+        paidRevenue: 0,
+        orderCount: 0,
+      }
+
+      current.paidUnits += quantity
+      current.paidRevenue += revenue
+      current.orderCount += 1
+
+      if (order.fulfillmentStatus === 'completed') {
+        current.completedUnits += quantity
+      } else {
+        current.pendingUnits += quantity
+      }
+
+      productPerformance.set(productName, current)
+    }
+  }
+
+  const fulfillmentLeadOrders = pendingFulfillmentOrders
+    .slice()
+    .sort((left, right) => {
+      const leftTime = left.paidAt ? new Date(left.paidAt).getTime() : new Date(left.updatedAt).getTime()
+      const rightTime = right.paidAt ? new Date(right.paidAt).getTime() : new Date(right.updatedAt).getTime()
+      return leftTime - rightTime
+    })
+    .slice(0, 12)
+
+  return {
+    windowLabel: '近 30 天',
+    summary: {
+      totalOrders: recentOrders.length,
+      paidOrders: paidOrders.length,
+      failedOrders: failedOrders.length,
+      processingOrders: processingOrders.length,
+      unpaidOrders: unpaidOrders.length,
+      pendingFulfillmentOrders: pendingFulfillmentOrders.length,
+      completedFulfillmentOrders: completedFulfillmentOrders.length,
+      totalRevenue,
+      avgFulfillmentOrderValue,
+    },
+    fulfillmentBuckets,
+    productPerformance: Array.from(productPerformance.values())
+      .sort((left, right) => right.paidRevenue - left.paidRevenue)
+      .slice(0, 12),
+    fulfillmentLeadOrders,
+  }
 }
 
 export async function updateOrderFulfillment(args: {

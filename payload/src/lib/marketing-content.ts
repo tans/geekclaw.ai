@@ -4,6 +4,7 @@ export type MarketingCard = {
   title: string
   body: string
   label?: string
+  href?: string
 }
 
 export type MarketingPageContent = {
@@ -26,6 +27,7 @@ export type MarketingPageContent = {
     metrics: Array<{ value: string; label: string }>
   }
   sections: Array<{
+    id?: string
     eyebrow: string
     title: string
     body: string
@@ -42,81 +44,109 @@ export type MarketingPageContent = {
 
 export const homeContent: MarketingPageContent = {
   seo: {
-    title: 'GeekClaw | 企业 AI、OPC 与 LiloAvatar 产品官网',
-    description: 'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
+    title: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
+    description: 'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
   },
-  eyebrow: 'GeekClaw Product Group',
-  title: '企业 AI、开放能力平台与数字人内容系统',
+  eyebrow: 'GeekClaw AI Agent',
+  title: '让 AI Agent 进入企业真实工作流',
   lead:
-    'GeekClaw 统一承接三个方向：面向企业流程的智能体落地、面向开发者与自动化团队的 OPC 能力平台，以及面向内容和服务场景的 LiloAvatar 数字人。',
+    'GeekClaw 围绕企业知识、工具调用、流程自动化和本地化部署，帮助团队把 AI 从问答带入可交付的业务执行。',
   primaryAction: {
-    label: '联系团队',
-    href: 'mailto:team@geekclaw.ai',
+    label: '预约演示',
+    href: 'mailto:team@geekclaw.ai?subject=GeekClaw%20演示预约',
   },
   secondaryAction: {
-    label: '查看主机销售',
-    href: '/shop',
+    label: '查看部署方案',
+    href: '/#deployment',
   },
   panel: {
-    eyebrow: 'Portfolio',
-    title: '一个官网承接三条产品线，交易模块由后台维护。',
+    eyebrow: 'Product System',
+    title: '从知识理解到任务执行，一套企业可控的 Agent 工作台。',
     body:
-      '官网负责讲清楚产品定位和应用路径；商品、库存、订单、支付与履约由 Payload 后台维护，方便后续销售主机和方案包。',
+      '把知识库、业务系统、自动化工具和审批节点连接起来，让 Agent 能查资料、调工具、跑流程，并留下可审计的执行记录。',
     metrics: [
-      { value: 'AI', label: '企业智能体' },
-      { value: 'OPC', label: '开放能力平台' },
-      { value: 'Lilo', label: '数字人内容系统' },
+      { value: 'Agent', label: '任务执行' },
+      { value: 'Flow', label: '流程自动化' },
+      { value: 'Local', label: '本地部署' },
     ],
   },
   sections: [
     {
-      eyebrow: 'Product Lines',
-      title: '产品线规划',
-      body: '每条产品线都使用独立叙事，避免混淆品牌，同时保持后台和商业化链路统一。',
+      id: 'capabilities',
+      eyebrow: 'Capabilities',
+      title: '企业 Agent 能力',
+      body: '围绕企业日常工作，把知识检索、工具调用、流程编排和权限审计放在同一个工作台里。',
       cards: [
         {
-          label: 'GeekClaw',
-          title: '企业智能体落地',
-          body: '面向销售、运营、交付和内部支持，把业务流程拆成可执行任务，接入工具、权限和审计。',
+          label: 'Knowledge',
+          title: '企业知识库',
+          body: '接入制度、产品资料、项目文档和 FAQ，让 Agent 在受控范围内检索、引用和生成回答。',
         },
         {
-          label: 'OPC',
-          title: '开放能力与流程编排',
-          body: '面向自动化团队和开发者，把模型、工具、数据源和任务流封装成可复用能力。',
+          label: 'Tools',
+          title: '工具调用与系统接入',
+          body: '连接 CRM、工单、表格、数据库和内部接口，让 Agent 能执行查询、写入、同步和通知。',
         },
         {
-          label: 'LiloAvatar',
-          title: '数字人内容与陪伴体验',
-          body: '面向品牌内容、客服、培训和互动场景，构建可持续更新的数字人表达系统。',
+          label: 'Governance',
+          title: '权限、审批与审计',
+          body: '为不同角色设置可用能力和确认节点，保留执行记录，满足企业运营和合规要求。',
         },
       ],
     },
     {
-      eyebrow: 'Commerce',
-      title: '主机销售模块',
-      body: '主机、套装、方案包不在前台硬编码，保留在商城后台编辑，便于调整价格、库存、上下架和履约说明。',
+      id: 'scenarios',
+      eyebrow: 'Scenarios',
+      title: '适用业务场景',
+      body: '从销售、客服、运营、交付到内部支持，优先覆盖高频、规则明确、需要跨系统协作的流程。',
       cards: [
         {
-          title: '硬件主机',
-          body: '可维护 SKU、价格、库存、限购、是否允许预订等字段。',
+          label: 'Sales',
+          title: '销售线索与客户跟进',
+          body: '自动整理客户信息、生成跟进建议、同步 CRM，并把下一步任务推送给销售团队。',
         },
         {
-          title: '部署套装',
-          body: '可把主机、系统初始化、远程配置和售后服务组合为商品。',
+          label: 'Support',
+          title: '客服与内部支持',
+          body: '基于知识库回答问题，识别复杂工单并转人工，减少重复咨询和跨部门等待。',
         },
         {
-          title: '订单履约',
-          body: '后台已承接支付状态、履约状态、交付方式、备注和事件时间线。',
+          label: 'Operations',
+          title: '运营报表与交付协同',
+          body: '汇总多系统数据，生成日报、周报和项目进展，协助团队发现异常并推动处理。',
+        },
+      ],
+    },
+    {
+      id: 'deployment',
+      eyebrow: 'Deployment',
+      title: '部署与交付方式',
+      body: '支持试点、私有化部署、预装主机和行业模板，按企业现有系统逐步接入。',
+      cards: [
+        {
+          label: 'Pilot',
+          title: '业务场景试点',
+          body: '选择一个高频流程，完成知识库、工具权限、验收指标和人工确认节点配置。',
+        },
+        {
+          label: 'Private',
+          title: '私有化与本地部署',
+          body: '支持企业自有网络、私有数据和本地运行环境，降低敏感数据外流风险。',
+        },
+        {
+          label: 'Hardware',
+          title: '预装主机与服务包',
+          body: '可通过商城承接主机、模板和部署服务，缩短从采购到上线的周期。',
         },
       ],
     },
   ],
   cta: {
-    eyebrow: 'Next Step',
-    title: '先把产品线讲清楚，再让商城承接交易',
-    body: '当前官网先完成品牌与产品结构，后续主机商品、价格和库存通过后台直接维护。',
-    label: '进入商城后台',
-    href: '/admin',
+    eyebrow: 'Start Building',
+    title: '从一个可验收的 Agent 场景开始',
+    body: '选一个高频业务流程，接入知识库、工具和权限边界，用 GeekClaw 快速验证 AI Agent 的实际产出。',
+    label: '预约部署评估',
+    href: 'mailto:team@geekclaw.ai?subject=GeekClaw%20部署评估',
   },
 }
 

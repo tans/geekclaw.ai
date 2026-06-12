@@ -22,5 +22,23 @@ module.exports = {
         ALIPAY_RETURN_URL: 'https://geekclaw.ai/pay-success',
       },
     },
+    {
+      name: 'payload-orders-maintenance',
+      cwd: __dirname,
+      script: 'npm',
+      args: 'run orders:maintenance',
+      interpreter: 'none',
+      autorestart: true,
+      env: {
+        NODE_ENV: 'production',
+        CLOSE_EXPIRED_BASE_URL: 'http://127.0.0.1:26223',
+        SYNC_PROCESSING_BASE_URL: 'http://127.0.0.1:26223',
+        CLOSE_EXPIRED_INTERVAL_MINUTES: '5',
+        SYNC_PROCESSING_INTERVAL_MINUTES: '10',
+        SYNC_PROCESSING_LIMIT: '20',
+        ORDERS_MAINTENANCE_STARTUP_DELAY_SECONDS: '45',
+        CRON_SECRET: 'change-me-too',
+      },
+    },
   ],
 }

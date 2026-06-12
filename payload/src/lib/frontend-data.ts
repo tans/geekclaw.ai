@@ -2,6 +2,8 @@ import { getPayload, type TypedLocale } from 'payload'
 import config from '@/payload.config'
 import type { Media } from '@/payload-types'
 import { ensureProductsSchema } from '@/lib/product-schema'
+import { getSiteData } from '@/lib/site'
+import { ensureTaxonomySchema } from '@/lib/taxonomy-schema'
 
 export type FrontendPageBlock = {
   heading: string
@@ -9,6 +11,7 @@ export type FrontendPageBlock = {
 }
 
 export type FrontendPage = {
+  id?: number
   title: string
   slug: string
   heroTitle?: string
@@ -50,9 +53,13 @@ export type FrontendPageSection =
     }
 
 export type FrontendPost = {
+  id?: number
   title: string
   slug: string
   category?: string
+  categorySlug?: string
+  categories?: Array<{ name: string; slug: string }>
+  tags?: Array<{ name: string; slug: string }>
   excerpt?: string
   cover?: FrontendMedia | null
   content?: string
@@ -63,6 +70,10 @@ export type FrontendProduct = {
   id?: number
   name: string
   slug: string
+  category?: string
+  categorySlug?: string
+  categories?: Array<{ name: string; slug: string }>
+  tags?: Array<{ name: string; slug: string }>
   price: number
   currency: string
   sku?: string
@@ -87,6 +98,51 @@ export type FrontendMedia = {
   height?: number
 }
 
+export type FrontendHomeSectionCard = {
+  title: string
+  body: string
+  label?: string
+  href?: string
+}
+
+export type FrontendHomeSection = {
+  id?: string
+  eyebrow: string
+  title: string
+  body: string
+  cards: FrontendHomeSectionCard[]
+}
+
+export type FrontendHomeContent = {
+  seoTitle: string
+  seoDescription: string
+  eyebrow: string
+  title: string
+  lead: string
+  primaryAction: {
+    label: string
+    href: string
+  }
+  secondaryAction?: {
+    label: string
+    href: string
+  }
+  panel: {
+    eyebrow: string
+    title: string
+    body: string
+    metrics: Array<{ value: string; label: string }>
+  }
+  sections: FrontendHomeSection[]
+  cta: {
+    eyebrow: string
+    title: string
+    body: string
+    label: string
+    href: string
+  }
+}
+
 type FrontendDataSource = {
   pages: Record<string, FrontendPage>
   posts: FrontendPost[]
@@ -104,11 +160,11 @@ const fallbackData: FrontendDataSource = {
     home: {
       title: 'GeekClaw',
       slug: 'home',
-      heroTitle: '企业 AI、开放能力平台与数字人内容系统',
+      heroTitle: '让 AI Agent 进入企业真实工作流',
       heroDescription:
-        'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
-      seoTitle: 'GeekClaw | 企业 AI、OPC 与 LiloAvatar 产品官网',
-      seoDescription: 'GeekClaw 汇集企业智能体、OPC 平台、LiloAvatar 数字人和主机销售后台。',
+        'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+      seoTitle: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
+      seoDescription: 'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
     },
     bailongma: {
       title: 'LiloAvatar',
@@ -221,6 +277,7 @@ const fallbackData: FrontendDataSource = {
 async function getFrontendDataSource(): Promise<FrontendDataSource> {
   try {
     ensureProductsSchema()
+    ensureTaxonomySchema()
     const payload = await getPayload({ config })
 
     const [pagesResult, postsResult, productsResult] = await Promise.all([
@@ -264,6 +321,7 @@ async function getFrontendDataSource(): Promise<FrontendDataSource> {
       pagesResult.docs.map((page) => [
         page.slug,
         {
+          id: page.id,
           title: page.title,
           slug: page.slug,
           heroTitle: page.heroTitle ?? undefined,
@@ -327,15 +385,24 @@ async function getFrontendDataSource(): Promise<FrontendDataSource> {
       ]),
     )
 
-    const posts = postsResult.docs.map((post) => ({
-      title: post.title,
-      slug: post.slug,
-      category: post.category ?? undefined,
-      excerpt: post.excerpt ?? lexicalToPlainText(post.content).slice(0, 140),
-      cover: resolveMedia(post.cover),
-      content: lexicalToPlainText(post.content),
-      publishedAt: post.publishedAt ?? undefined,
-    }))
+    const posts = postsResult.docs.map((post) => {
+      const categoryDocs = normalizeNamedRelationships(post.categories)
+      const primaryCategory = normalizeNamedRelationship(post.primaryCategory) || categoryDocs[0] || null
+
+      return {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        category: primaryCategory?.name,
+        categorySlug: primaryCategory?.slug,
+        categories: categoryDocs,
+        tags: normalizeNamedRelationships(post.tags),
+        excerpt: post.excerpt ?? lexicalToPlainText(post.content).slice(0, 140),
+        cover: resolveMedia(post.cover),
+        content: lexicalToPlainText(post.content),
+        publishedAt: post.publishedAt ?? undefined,
+      }
+    })
 
     const products = await Promise.all(
       productsResult.docs.map(async (product) => {
@@ -361,6 +428,10 @@ async function getFrontendDataSource(): Promise<FrontendDataSource> {
           name: product.name,
           id: product.id,
           slug: product.slug,
+          category: (normalizeNamedRelationship(product.primaryCategory) || normalizeNamedRelationships(product.categories)[0] || null)?.name,
+          categorySlug: (normalizeNamedRelationship(product.primaryCategory) || normalizeNamedRelationships(product.categories)[0] || null)?.slug,
+          categories: normalizeNamedRelationships(product.categories),
+          tags: normalizeNamedRelationships(product.tags),
           price: product.price,
           currency: product.currency,
           sku: stock.sku,
@@ -511,9 +582,45 @@ export async function listPosts(): Promise<FrontendPost[]> {
   return data.posts
 }
 
+export async function listPostCategories() {
+  const posts = await listPosts()
+  const categoryMap = new Map<string, { name: string; slug: string; count: number }>()
+
+  for (const post of posts) {
+    for (const category of post.categories || []) {
+      const existing = categoryMap.get(category.slug)
+      categoryMap.set(category.slug, {
+        name: category.name,
+        slug: category.slug,
+        count: (existing?.count || 0) + 1,
+      })
+    }
+  }
+
+  return Array.from(categoryMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+}
+
 export async function getPostBySlug(slug: string): Promise<FrontendPost | null> {
   const data = await getFrontendDataSource()
   return data.posts.find((item) => item.slug === slug) ?? null
+}
+
+export async function listPostTags() {
+  const posts = await listPosts()
+  const tagMap = new Map<string, { name: string; slug: string; count: number }>()
+
+  for (const post of posts) {
+    for (const tag of post.tags || []) {
+      const existing = tagMap.get(tag.slug)
+      tagMap.set(tag.slug, {
+        name: tag.name,
+        slug: tag.slug,
+        count: (existing?.count || 0) + 1,
+      })
+    }
+  }
+
+  return Array.from(tagMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
 }
 
 export async function listProducts(): Promise<FrontendProduct[]> {
@@ -521,9 +628,225 @@ export async function listProducts(): Promise<FrontendProduct[]> {
   return data.products
 }
 
+export async function listProductCategories() {
+  const products = await listProducts()
+  const categoryMap = new Map<string, { name: string; slug: string; count: number }>()
+
+  for (const product of products) {
+    for (const category of product.categories || []) {
+      const existing = categoryMap.get(category.slug)
+      categoryMap.set(category.slug, {
+        name: category.name,
+        slug: category.slug,
+        count: (existing?.count || 0) + 1,
+      })
+    }
+  }
+
+  return Array.from(categoryMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+}
+
+export async function listActiveProductsForAdmin(): Promise<FrontendProduct[]> {
+  const data = await getFrontendDataSource()
+  return data.products
+}
+
 export async function getProductBySlug(slug: string): Promise<FrontendProduct | null> {
   const data = await getFrontendDataSource()
   return data.products.find((item) => item.slug === slug) ?? null
+}
+
+export async function listProductTags() {
+  const products = await listProducts()
+  const tagMap = new Map<string, { name: string; slug: string; count: number }>()
+
+  for (const product of products) {
+    for (const tag of product.tags || []) {
+      const existing = tagMap.get(tag.slug)
+      tagMap.set(tag.slug, {
+        name: tag.name,
+        slug: tag.slug,
+        count: (existing?.count || 0) + 1,
+      })
+    }
+  }
+
+  return Array.from(tagMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+}
+
+export async function getFrontendHomeContent(): Promise<FrontendHomeContent> {
+  const [site, data] = await Promise.all([getSiteData(), getFrontendDataSource()])
+
+  const featuredPages = resolveFeaturedItems({
+    ids: site.home.featuredPages,
+    items: Object.values(data.pages),
+  }).slice(0, 6)
+  const featuredPosts = resolveFeaturedItems({
+    ids: site.home.featuredPosts,
+    items: data.posts,
+  }).slice(0, 6)
+  const featuredProducts = resolveFeaturedItems({
+    ids: site.home.featuredProducts,
+    items: data.products,
+  }).slice(0, 6)
+
+  const pageCards = featuredPages.length
+    ? featuredPages.map((page) => ({
+        label: '专题 / 页面',
+        title: page.title,
+        body: page.heroDescription || page.seoDescription || '进入该专题页查看完整介绍与内容结构。',
+        href: page.slug === 'home' ? '/' : `/${page.slug}`,
+      }))
+    : [
+        {
+          label: 'Knowledge',
+          title: '企业知识库',
+          body: '接入制度、产品资料、项目文档和 FAQ，让 Agent 在受控范围内检索、引用和生成回答。',
+          href: '/#capabilities',
+        },
+        {
+          label: 'Tools',
+          title: '工具调用与系统接入',
+          body: '连接 CRM、工单、表格、数据库和内部接口，让 Agent 能执行查询、写入、同步和通知。',
+          href: '/#capabilities',
+        },
+        {
+          label: 'Governance',
+          title: '权限、审批与审计',
+          body: '为不同角色设置可用能力和确认节点，保留执行记录，满足企业运营和合规要求。',
+          href: '/#capabilities',
+        },
+      ]
+
+  const postCards = featuredPosts.length
+    ? featuredPosts.map((post) => ({
+        label: post.category || '文章',
+        title: post.title,
+        body: post.excerpt || '从内容站入口继续阅读文章详情。',
+        href: `/blog/${post.slug}`,
+      }))
+    : [
+        {
+          label: 'Sales',
+          title: '销售线索与客户跟进',
+          body: '自动整理客户信息、生成跟进建议、同步 CRM，并把下一步任务推送给销售团队。',
+          href: '/#scenarios',
+        },
+        {
+          label: 'Support',
+          title: '客服与内部支持',
+          body: '基于知识库回答问题，识别复杂工单并转人工，减少重复咨询和跨部门等待。',
+          href: '/#scenarios',
+        },
+        {
+          label: 'Operations',
+          title: '运营报表与交付协同',
+          body: '汇总多系统数据，生成日报、周报和项目进展，协助团队发现异常并推动处理。',
+          href: '/#scenarios',
+        },
+      ]
+
+  const productCards = featuredProducts.length
+    ? featuredProducts.map((product) => ({
+        label: `¥${product.price.toLocaleString('zh-CN')}`,
+        title: product.name,
+        body: product.summary || product.purchaseMessage || '进入商品详情页查看价格、库存和下单入口。',
+        href: `/shop/${product.slug}`,
+      }))
+    : [
+        {
+          label: 'Pilot',
+          title: '业务场景试点',
+          body: '选择一个高频流程，完成知识库、工具权限、验收指标和人工确认节点配置。',
+          href: 'mailto:team@geekclaw.ai?subject=GeekClaw%20试点咨询',
+        },
+        {
+          label: 'Private',
+          title: '私有化与本地部署',
+          body: '支持企业自有网络、私有数据和本地运行环境，降低敏感数据外流风险。',
+          href: '/#deployment',
+        },
+        {
+          label: 'Hardware',
+          title: '预装主机与服务包',
+          body: '可通过商城承接主机、模板和部署服务，缩短从采购到上线的周期。',
+          href: '/shop',
+        },
+      ]
+
+  return {
+    seoTitle: site.seoTitle,
+    seoDescription: site.seoDescription,
+    eyebrow: site.home.eyebrow,
+    title: site.home.heroTitle,
+    lead: site.home.heroDescription,
+    primaryAction: {
+      label: site.home.primaryActionLabel,
+      href: site.home.primaryActionHref,
+    },
+    secondaryAction:
+      site.home.secondaryActionLabel && site.home.secondaryActionHref
+        ? {
+            label: site.home.secondaryActionLabel,
+            href: site.home.secondaryActionHref,
+          }
+        : undefined,
+    panel: {
+      eyebrow: site.home.panelEyebrow,
+      title: site.home.panelTitle,
+      body: site.home.panelBody,
+      metrics: site.home.panelMetrics,
+    },
+    sections: [
+      {
+        eyebrow: 'Capabilities',
+        id: 'capabilities',
+        title: site.home.featuredPagesHeading,
+        body: site.home.featuredPagesDescription,
+        cards: pageCards,
+      },
+      {
+        eyebrow: 'Scenarios',
+        id: 'scenarios',
+        title: site.home.featuredPostsHeading,
+        body: site.home.featuredPostsDescription,
+        cards: postCards,
+      },
+      {
+        eyebrow: 'Deployment',
+        id: 'deployment',
+        title: site.home.featuredProductsHeading,
+        body: site.home.featuredProductsDescription,
+        cards: productCards,
+      },
+    ],
+    cta: {
+      eyebrow: site.home.ctaEyebrow,
+      title: site.home.ctaTitle,
+      body: site.home.ctaDescription,
+      label: site.home.ctaLabel,
+      href: site.home.ctaHref,
+    },
+  }
+}
+
+function resolveFeaturedItems<T extends { id?: number }>(args: { ids: number[]; items: T[] }) {
+  const itemMap = new Map(args.items.map((item) => [item.id, item]))
+  return args.ids.map((id) => itemMap.get(id)).filter((item): item is T => Boolean(item))
+}
+
+function getDefaultFeaturedPages(data: FrontendDataSource) {
+  const pages = Object.values(data.pages)
+  const preferred = ['bailongma', 'home']
+  const selected = preferred
+    .map((slug) => pages.find((page) => page.slug === slug))
+    .filter((page): page is FrontendPage => Boolean(page))
+
+  if (selected.length) {
+    return selected
+  }
+
+  return pages.slice(0, 3)
 }
 
 function lexicalToPlainText(value: unknown): string {
@@ -570,4 +893,23 @@ function resolveMedia(value: number | Media | null | undefined): FrontendMedia |
     width: value.sizes?.card?.width ?? value.width ?? undefined,
     height: value.sizes?.card?.height ?? value.height ?? undefined,
   }
+}
+
+function normalizeNamedRelationship(value: unknown): { name: string; slug: string } | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const name = 'name' in value ? value.name : null
+  const slug = 'slug' in value ? value.slug : null
+
+  return typeof name === 'string' && typeof slug === 'string' && name.trim() && slug.trim() ? { name, slug } : null
+}
+
+function normalizeNamedRelationships(value: unknown): Array<{ name: string; slug: string }> {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((item) => normalizeNamedRelationship(item)).filter((item): item is { name: string; slug: string } => Boolean(item))
 }

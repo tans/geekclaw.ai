@@ -1,9 +1,24 @@
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
-import { listProducts } from '@/lib/frontend-data'
+import { listProductCategories, listProductTags, listProducts } from '@/lib/frontend-data'
 
-export default async function ShopPage() {
+export default async function ShopPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ category?: string; tag?: string }>
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
   const products = await listProducts()
+  const categories = await listProductCategories()
+  const tags = await listProductTags()
+  const activeCategory = typeof resolvedSearchParams?.category === 'string' ? resolvedSearchParams.category : ''
+  const activeTag = typeof resolvedSearchParams?.tag === 'string' ? resolvedSearchParams.tag : ''
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory = activeCategory ? product.categories?.some((item) => item.slug === activeCategory) : true
+    const matchesTag = activeTag ? product.tags?.some((item) => item.slug === activeTag) : true
+    return Boolean(matchesCategory && matchesTag)
+  })
+
   return (
     <PageShell>
       <main style={{ maxWidth: 1120, margin: '0 auto', padding: '64px 20px 40px' }}>
@@ -17,6 +32,33 @@ export default async function ShopPage() {
           </p>
         </section>
 
+        <section style={{ marginTop: 24, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link href="/shop" style={!activeCategory && !activeTag ? chipPrimary : chipSecondary}>
+            全部商品
+          </Link>
+          {categories.map((category) => (
+            <Link
+              key={category.slug}
+              href={`/shop?category=${encodeURIComponent(category.slug)}`}
+              style={activeCategory === category.slug ? chipPrimary : chipSecondary}
+            >
+              {category.name} {category.count ? `(${category.count})` : ''}
+            </Link>
+          ))}
+        </section>
+
+        <section style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {tags.map((tag) => (
+            <Link
+              key={tag.slug}
+              href={`/shop${activeCategory ? `?category=${encodeURIComponent(activeCategory)}&` : '?'}tag=${encodeURIComponent(tag.slug)}`}
+              style={activeTag === tag.slug ? chipPrimary : chipSecondary}
+            >
+              #{tag.name} {tag.count ? `(${tag.count})` : ''}
+            </Link>
+          ))}
+        </section>
+
         <section
           style={{
             display: 'grid',
@@ -25,7 +67,7 @@ export default async function ShopPage() {
             marginTop: 28,
           }}
         >
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <article
               key={product.name}
               style={{
@@ -50,6 +92,29 @@ export default async function ShopPage() {
                 />
               ) : null}
               <h2 style={{ margin: product.cover ? '18px 0 0' : 0, fontSize: 24, lineHeight: 1.25 }}>{product.name}</h2>
+              {product.category && product.categorySlug ? (
+                <div style={{ marginTop: 10 }}>
+                  <Link
+                    href={`/shop?category=${encodeURIComponent(product.categorySlug)}`}
+                    style={{ color: 'var(--gc-accent)', fontSize: 13, textDecoration: 'none' }}
+                  >
+                    {product.category}
+                  </Link>
+                </div>
+              ) : null}
+              {product.tags?.length ? (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {product.tags.map((tag) => (
+                    <Link
+                      key={`${product.slug}-${tag.slug}`}
+                      href={`/shop?tag=${encodeURIComponent(tag.slug)}`}
+                      style={{ color: '#6f6661', fontSize: 12, textDecoration: 'none' }}
+                    >
+                      #{tag.name}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
               <p style={{ margin: '14px 0 0', color: '#6f6661', lineHeight: 1.8 }}>{product.summary}</p>
               <p style={{ margin: '18px 0 0', color: '#1d1a17', fontWeight: 700, fontSize: 22 }}>
                 {product.currency === 'CNY' ? '¥' : ''}
@@ -89,3 +154,23 @@ export default async function ShopPage() {
     </PageShell>
   )
 }
+
+const chipPrimary = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '8px 14px',
+  borderRadius: 999,
+  background: '#b42318',
+  color: '#fff',
+  textDecoration: 'none',
+  fontWeight: 600,
+  fontSize: 13,
+} as const
+
+const chipSecondary = {
+  ...chipPrimary,
+  background: '#fff',
+  color: '#1d1a17',
+  border: '1px solid rgba(20,20,20,0.12)',
+} as const

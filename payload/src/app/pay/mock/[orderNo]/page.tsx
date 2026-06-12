@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { MockPaymentActions } from '@/components/mock-payment-actions'
 import { PageShell } from '@/components/page-shell'
 import { getOrderByOrderNo } from '@/lib/orders'
+import { formatPaymentMode, formatPaymentStatus } from '@/lib/order-status'
 
 export default async function MockPayPage({
   params,
@@ -39,7 +40,7 @@ export default async function MockPayPage({
             </p>
             <h1 style={{ margin: '18px 0 0', fontSize: 'clamp(30px, 5vw, 48px)' }}>模拟支付页</h1>
             <p style={{ margin: '16px 0 0', color: '#6f6661', lineHeight: 1.9 }}>
-              当前环境未配置真实支付宝密钥，所以这里用 mock 支付页完成订单闭环验证。
+              当前环境未配置真实支付宝密钥，所以这里通过 Mock 联调页完成订单闭环验证。
             </p>
             <MockPaymentActions orderNo={orderNo} />
           </article>
@@ -56,9 +57,11 @@ export default async function MockPayPage({
             <p style={{ margin: 0, color: '#6f6661' }}>订单号</p>
             <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{order.orderNo}</p>
             <p style={{ margin: '16px 0 0', color: '#6f6661' }}>支付状态</p>
-            <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{order.paymentStatus}</p>
+            <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{formatPaymentStatus(order.paymentStatus)}</p>
+            <p style={{ margin: '16px 0 0', color: '#6f6661' }}>支付模式</p>
+            <p style={{ margin: '8px 0 0', fontWeight: 700 }}>{formatPaymentMode('mock')}</p>
             <p style={{ margin: '16px 0 0', color: '#6f6661' }}>金额</p>
-            <p style={{ margin: '8px 0 0', fontSize: 30, fontWeight: 700 }}>¥{order.totalAmount.toLocaleString('zh-CN')}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 30, fontWeight: 700 }}>¥{formatCurrency(order.totalAmount)}</p>
             <div style={{ marginTop: 20 }}>
               <Link href={`/orders/${order.orderNo}`} style={linkStyle}>
                 查看订单详情
@@ -76,3 +79,7 @@ const linkStyle = {
   textDecoration: 'none',
   fontWeight: 600,
 } as const
+
+function formatCurrency(value?: number | null) {
+  return typeof value === 'number' ? value.toLocaleString('zh-CN') : '0'
+}

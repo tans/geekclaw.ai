@@ -41,6 +41,40 @@ export type QueryPaymentOrderResult = {
   raw: Record<string, unknown>
 }
 
+export type AlipayRuntimeReadiness = {
+  canUseRealPayment: boolean
+  checks: Array<{
+    key:
+      | 'appId'
+      | 'sellerId'
+      | 'privateKey'
+      | 'publicKey'
+      | 'notifyUrl'
+      | 'returnUrl'
+      | 'gateway'
+      | 'sdkInit'
+      | 'pageExecute'
+      | 'queryPrerequisite'
+    label: string
+    passed: boolean
+    detail: string
+  }>
+}
+
+function normalizePemLikeValue(value?: string) {
+  return value?.trim() || ''
+}
+
+export function isPemLikePrivateKey(value?: string) {
+  const normalized = normalizePemLikeValue(value)
+  return normalized.includes('BEGIN') && normalized.includes('PRIVATE KEY')
+}
+
+export function isPemLikePublicKey(value?: string) {
+  const normalized = normalizePemLikeValue(value)
+  return normalized.includes('BEGIN') && normalized.includes('PUBLIC KEY')
+}
+
 export async function createAlipayPaymentOrder(
   input: CreatePaymentOrderInput,
 ): Promise<CreatePaymentOrderResult> {
@@ -165,6 +199,183 @@ export async function queryAlipayPaymentOrder(
   }
 }
 
+export function validateAlipayRuntimeConfig(input: {
+  appId?: string
+  sellerId?: string
+  gateway?: string
+  privateKey?: string
+  publicKey?: string
+  notifyUrl?: string
+  returnUrl?: string
+}): AlipayRuntimeReadiness {
+  const appId = input.appId?.trim() || ''
+  const sellerId = input.sellerId?.trim() || ''
+  const gateway = input.gateway?.trim() || ''
+  const privateKey = normalizePemLikeValue(input.privateKey)
+  const publicKey = normalizePemLikeValue(input.publicKey)
+  const notifyUrl = input.notifyUrl?.trim() || ''
+  const returnUrl = input.returnUrl?.trim() || ''
+
+  const checks: AlipayRuntimeReadiness['checks'] = [
+    {
+      key: 'appId',
+      label: 'App ID',
+      passed: Boolean(appId),
+      detail: appId ? '已提供应用标识。' : '缺少 App ID。',
+    },
+    {
+      key: 'sellerId',
+      label: 'Seller ID',
+      passed: Boolean(sellerId),
+      detail: sellerId ? '已提供收款账号校验标识。' : '缺少 Seller ID，notify 无法校验收款归属。',
+    },
+    {
+      key: 'privateKey',
+      label: '应用私钥',
+      passed: isPemLikePrivateKey(privateKey),
+      detail: privateKey
+        ? isPemLikePrivateKey(privateKey)
+          ? '私钥内容包含 PEM 头，满足本地签名初始化前提。'
+          : '私钥已填写，但不像 PEM 格式，可能无法完成本地签名。'
+        : '缺少应用私钥。',
+    },
+    {
+      key: 'publicKey',
+      label: '支付宝公钥',
+      passed: isPemLikePublicKey(publicKey),
+      detail: publicKey
+        ? isPemLikePublicKey(publicKey)
+          ? '公钥内容包含 PEM 头，满足验签初始化前提。'
+          : '公钥已填写，但不像 PEM 格式，可能无法完成验签。'
+        : '缺少支付宝公钥。',
+    },
+    {
+      key: 'notifyUrl',
+      label: 'Notify URL',
+      passed: notifyUrl.startsWith('https://'),
+      detail: notifyUrl ? (notifyUrl.startsWith('https://') ? '已使用 HTTPS 回调地址。' : 'notifyUrl 不是 HTTPS 地址。') : '缺少 notifyUrl。',
+    },
+    {
+      key: 'returnUrl',
+      label: 'Return URL',
+      passed: returnUrl.startsWith('https://'),
+      detail: returnUrl ? (returnUrl.startsWith('https://') ? '已使用 HTTPS 回跳地址。' : 'returnUrl 不是 HTTPS 地址。') : '缺少 returnUrl。',
+    },
+    {
+      key: 'gateway',
+      label: '支付宝网关',
+      passed: gateway.startsWith('https://'),
+      detail: gateway ? (gateway.startsWith('https://') ? '网关地址格式正常。' : 'gateway 不是 HTTPS 地址。') : '缺少支付宝网关地址。',
+    },
+  ]
+
+  const prereqsOk = checks.every((item) => item.passed)
+
+  if (!prereqsOk) {
+    checks.push(
+      {
+        key: 'sdkInit',
+        label: 'SDK 初始化',
+        passed: false,
+        detail: '基础配置未满足，跳过 SDK 初始化自检。',
+      },
+      {
+        key: 'pageExecute',
+        label: '签名跳转生成',
+        passed: false,
+        detail: '基础配置未满足，跳过支付跳转签名自检。',
+      },
+      {
+        key: 'queryPrerequisite',
+        label: '主动查单前提',
+        passed: false,
+        detail: '基础配置未满足，暂不具备真实查单前提。',
+      },
+    )
+
+    return {
+      canUseRealPayment: false,
+      checks,
+    }
+  }
+
+  try {
+    const sdk = new AlipaySdk({
+      appId,
+      privateKey,
+      alipayPublicKey: publicKey,
+      gateway,
+    })
+
+    checks.push({
+      key: 'sdkInit',
+      label: 'SDK 初始化',
+      passed: true,
+      detail: '当前配置可完成 Alipay SDK 本地初始化。',
+    })
+
+    const previewUrl = sdk.pageExecute('alipay.trade.page.pay', 'GET', {
+      notifyUrl,
+      returnUrl,
+      bizContent: {
+        outTradeNo: 'READINESS-CHECK-ORDER',
+        productCode: 'FAST_INSTANT_TRADE_PAY',
+        subject: 'GeekClaw Readiness Check',
+        totalAmount: '0.01',
+      },
+    })
+
+    checks.push({
+      key: 'pageExecute',
+      label: '签名跳转生成',
+      passed: Boolean(previewUrl && previewUrl.includes('app_id=')),
+      detail: previewUrl && previewUrl.includes('app_id=')
+        ? '已成功生成本地签名跳转链接，说明真实支付跳转参数可以被构造。'
+        : 'SDK 初始化成功，但未能生成预期的跳转签名参数。',
+    })
+
+    checks.push({
+      key: 'queryPrerequisite',
+      label: '主动查单前提',
+      passed: true,
+      detail: '当前配置已满足真实支付宝主动查单的本地前提。',
+    })
+
+    return {
+      canUseRealPayment: checks.every((item) => item.passed),
+      checks,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown sdk error'
+
+    checks.push(
+      {
+        key: 'sdkInit',
+        label: 'SDK 初始化',
+        passed: false,
+        detail: `SDK 初始化失败：${message}`,
+      },
+      {
+        key: 'pageExecute',
+        label: '签名跳转生成',
+        passed: false,
+        detail: '由于 SDK 初始化失败，无法生成本地支付跳转签名参数。',
+      },
+      {
+        key: 'queryPrerequisite',
+        label: '主动查单前提',
+        passed: false,
+        detail: '由于 SDK 初始化失败，暂不具备真实查单前提。',
+      },
+    )
+
+    return {
+      canUseRealPayment: false,
+      checks,
+    }
+  }
+}
+
 export function verifyAlipayNotify(input: {
   appId: string
   publicKey: string
@@ -197,7 +408,7 @@ export async function validateAlipayOrderResult(input: {
     }
   }
 
-  const expectedAmount = order.totalAmount.toFixed(2)
+  const expectedAmount = normalizeOrderAmount(order.totalAmount).toFixed(2)
   const normalizedAmount = normalizeAmount(input.totalAmount)
 
   if (input.appId?.trim()) {
@@ -250,6 +461,10 @@ export async function validateAlipayOrderResult(input: {
     message: '支付宝回调业务字段校验通过。',
     order,
   }
+}
+
+function normalizeOrderAmount(value?: number | null) {
+  return typeof value === 'number' ? value : 0
 }
 
 function normalizeAmount(value: string | undefined) {

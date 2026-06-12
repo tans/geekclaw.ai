@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { getOrderByOrderNo, markOrderPaid } from '@/lib/orders'
+import { formatOrderStatus, formatPaymentMode, formatPaymentStatus } from '@/lib/order-status'
 import { getPaymentDiagnostics } from '@/lib/payment-diagnostics'
 import { getSiteData } from '@/lib/site'
 import { validateAlipayOrderResult } from '@/lib/payment'
@@ -74,13 +75,14 @@ export default async function PaySuccessPage({
           </p>
           <h1 style={{ margin: '18px 0 0', fontSize: 'clamp(32px, 5vw, 52px)' }}>支付返回页</h1>
           <p style={{ margin: '16px 0 0', color: '#6f6661', lineHeight: 1.9 }}>
-            当前已经补齐支付宝同步返回页骨架。真实支付成功后，异步通知会负责最终回写订单状态。
+            当前页用于承接支付宝同步返回。若订单业务校验通过，会先做一次同步回写兜底，最终状态仍以异步通知为准。
           </p>
           <div style={{ marginTop: 24, display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
             <InfoCard label="订单号" value={out_trade_no || '-'} />
             <InfoCard label="交易号" value={trade_no || '-'} />
-            <InfoCard label="支付状态" value={order?.paymentStatus || '-'} />
-            <InfoCard label="支付模式" value={paymentDiagnostics.mode} />
+            <InfoCard label="支付状态" value={formatPaymentStatus(order?.paymentStatus)} />
+            <InfoCard label="订单状态" value={formatOrderStatus(order?.status)} />
+            <InfoCard label="支付模式" value={formatPaymentMode(paymentDiagnostics.mode)} />
           </div>
           {validation && !validation.ok ? (
             <div
@@ -122,7 +124,7 @@ export default async function PaySuccessPage({
               }}
             >
               <p style={{ margin: 0 }}><strong>商品：</strong>{productName}</p>
-              <p style={{ margin: 0 }}><strong>应付金额：</strong>¥{order.totalAmount.toLocaleString('zh-CN')}</p>
+              <p style={{ margin: 0 }}><strong>应付金额：</strong>¥{formatCurrency(order.totalAmount)}</p>
               <p style={{ margin: 0 }}><strong>联系人：</strong>{order.customerName || '-'}</p>
               <p style={{ margin: 0 }}><strong>订单详情页：</strong>/orders/{order.orderNo}</p>
             </div>
@@ -187,3 +189,7 @@ const buttonSecondary = {
   color: '#1d1a17',
   border: '1px solid rgba(20,20,20,0.12)',
 } as const
+
+function formatCurrency(value?: number | null) {
+  return typeof value === 'number' ? value.toLocaleString('zh-CN') : '0'
+}

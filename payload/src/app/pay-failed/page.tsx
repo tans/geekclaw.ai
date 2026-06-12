@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { getOrderByOrderNo } from '@/lib/orders'
+import { formatOrderStatus, formatPaymentMode, formatPaymentStatus } from '@/lib/order-status'
 import { getPaymentDiagnostics } from '@/lib/payment-diagnostics'
 
 export default async function PayFailedPage({
@@ -28,13 +29,13 @@ export default async function PayFailedPage({
           </p>
           <h1 style={{ margin: '18px 0 0', fontSize: 'clamp(32px, 5vw, 52px)' }}>支付未完成</h1>
           <p style={{ margin: '16px 0 0', color: '#6f6661', lineHeight: 1.9 }}>
-            当前页面用于承接支付中断或失败后的用户回流，后续会结合真实回调状态进一步完善。
+            当前页面用于承接支付中断、放弃或失败后的用户回流。建议先返回订单详情确认实际支付状态，再决定是否重新发起支付。
           </p>
           <div style={{ marginTop: 24, display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
             <InfoCard label="订单号" value={orderNo || '-'} />
-            <InfoCard label="当前支付状态" value={order?.paymentStatus || '-'} />
-            <InfoCard label="订单状态" value={order?.status || '-'} />
-            <InfoCard label="支付模式" value={paymentDiagnostics.mode} />
+            <InfoCard label="当前支付状态" value={formatPaymentStatus(order?.paymentStatus)} />
+            <InfoCard label="订单状态" value={formatOrderStatus(order?.status)} />
+            <InfoCard label="支付模式" value={formatPaymentMode(paymentDiagnostics.mode)} />
           </div>
           {order ? (
             <div
@@ -49,7 +50,7 @@ export default async function PayFailedPage({
             >
               <p style={{ margin: 0 }}><strong>联系人：</strong>{order.customerName || '-'}</p>
               <p style={{ margin: 0 }}><strong>手机号：</strong>{order.customerPhone || '-'}</p>
-              <p style={{ margin: 0 }}><strong>应付金额：</strong>¥{order.totalAmount.toLocaleString('zh-CN')}</p>
+              <p style={{ margin: 0 }}><strong>应付金额：</strong>¥{formatCurrency(order.totalAmount)}</p>
             </div>
           ) : null}
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 24 }}>
@@ -113,3 +114,7 @@ const buttonSecondary = {
   color: '#1d1a17',
   border: '1px solid rgba(20,20,20,0.12)',
 } as const
+
+function formatCurrency(value?: number | null) {
+  return typeof value === 'number' ? value.toLocaleString('zh-CN') : '0'
+}

@@ -56,8 +56,15 @@ export default async function BlogDetailPage({
             padding: 32,
           }}
         >
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            {post.category ? <p style={{ margin: 0, color: 'var(--gc-accent)', fontSize: 13 }}>{post.category}</p> : null}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {post.category && post.categorySlug ? (
+              <a
+                href={`/blog?category=${encodeURIComponent(post.categorySlug)}`}
+                style={{ margin: 0, color: 'var(--gc-accent)', fontSize: 13, textDecoration: 'none' }}
+              >
+                {post.category}
+              </a>
+            ) : null}
             {post.publishedAt ? (
               <p style={{ margin: 0, color: '#6f6661', fontSize: 13 }}>{formatDate(post.publishedAt)}</p>
             ) : null}
@@ -65,6 +72,19 @@ export default async function BlogDetailPage({
           <h1 style={{ margin: '14px 0 0', fontSize: 'clamp(32px, 5vw, 52px)', lineHeight: 1.08 }}>{post.title}</h1>
           {post.excerpt ? (
             <p style={{ margin: '18px 0 0', color: '#6f6661', lineHeight: 1.9, fontSize: 18 }}>{post.excerpt}</p>
+          ) : null}
+          {post.tags?.length ? (
+            <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {post.tags.map((tag) => (
+                <a
+                  key={`${post.slug}-${tag.slug}`}
+                  href={`/blog?tag=${encodeURIComponent(tag.slug)}`}
+                  style={{ color: '#6f6661', fontSize: 13, textDecoration: 'none' }}
+                >
+                  #{tag.name}
+                </a>
+              ))}
+            </div>
           ) : null}
           {post.cover ? (
             <div style={{ marginTop: 24 }}>

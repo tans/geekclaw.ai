@@ -1,207 +1,185 @@
 # Payload for geekclaw.ai
 
-这是 `geekclaw.ai` 的主站与后台，基于 `Payload + Next.js`。
+`geekclaw.ai` 当前主站和后台基于 `Payload + Next.js`，覆盖内容站、博客、专题页、商品、订单、支付联调和运营后台。
 
-## 目标
+## 当前状态
 
-- 一个专业内容站后台
-- 一个可管理商品、订单的商城后台
-- 支持专题二级页面
-- 支持博客/文章发布
-- 支持 GeekClaw、OPC、LiloAvatar 三条产品线的官网表达
+已完成：
 
-## 当前阶段
+- 官网前台：`/`、`/blog`、`/blog/[slug]`、`/shop`、`/shop/[slug]`、`/bailongma`、`/[slug]`
+- Payload 后台：`/admin`
+- 内容模型：页面、文章、媒体、站点设置、文章分类/标签
+- 商城模型：商品、订单、商品分类/标签
+- 支付配置模型：独立 `payment-settings` 全局，和首页内容配置分离
+- 支付迁移闭环：`/admin/payment-readiness` 可识别旧 `site-settings.payment` 遗留，并支持一键迁移到 `payment-settings`
+- 支付来源追踪：联调页可明确区分环境变量、`payment-settings`、旧 `site-settings.payment` 遗留和最终回退值
+- 环境覆盖可见：联调页、前台诊断页和 `payment-settings` 侧栏都会明确提示哪些支付字段正被环境变量覆盖，避免后台改值后误判“未生效”
+- Notify 单独判定：诊断页和联调页会单独显示“异步通知是否具备验签与订单回写前提”，避免只看支付跳转就误判真实接入已完成
+- 密钥维护收口：`payment-settings` 不再直接回显完整私钥/公钥，改为摘要状态 + 单独轮换面板，并支持 PEM 校验与显式清空后台回退密钥
+- 首页编排：首页 hero、推荐页面、推荐文章、推荐商品、CTA、导航、页脚、SEO 都由后台驱动
+- 博客/商城前台筛选：支持分类和标签筛选
+- 订单链路：创建订单、支付发起、Mock 支付、支付回跳、notify、失败页、订单详情页
+- 支付运营：支付诊断页、支付联调就绪页、支付观测页、支付复核、主动查单、批量查单、超时关单
+- 订单运营：订单工作台、单品订单台、库存占用台、销售与履约报表、订单导出、后台录单
+- 内容治理：内容治理台、素材治理台、后台首页内容/库存/支付摘要
+- 角色权限：`super-admin / ops / editor`
+- 权限落地：集合/全局访问控制、高风险订单 API 限权、后台入口裁剪、原生导航按业务域裁剪、集合直链访问按业务域拒绝、支付配置独立授权、订单操作按钮级裁剪
+- 常驻任务：`payload-orders-maintenance` 定时执行超时关单和 stale processing 查单
 
-当前已完成：
+仍未完成：
 
-- Payload 项目骨架
-- 页面、文章、商品、订单、媒体、站点设置模型
-- 订单模型已补充履约字段：履约状态、交付方式、跟踪号、交付备注、交付时间
-- `/bailongma` 二级页面前台入口
-- `/blog` 与 `/shop` 前台结构
-- 博客详情页与商品详情页路由
-- 后台 `/admin` 已可进入初始化/登录
-- 默认内容种子脚本可执行
-- 前台已优先读取 Payload 内容与站点设置
-- 商品详情页已可创建订单并写入后台
-- `/api/orders/pay` 已可发起支付骨架，订单会进入 `processing`
-- `/pay/alipay/redirect` 已作为真实支付宝跳转前的占位桥接页
-- `.env` / 站点设置已支持支付宝参数读取，且 env 优先
-- `/api/pay/alipay/notify`、`/pay-success`、`/pay-failed` 已补齐基础支付回流骨架
-- `/pay-success` 在带回 `trade_status=TRADE_SUCCESS/TRADE_FINISHED` 时，会先做一次同步返回兜底回写，最终状态仍以 notify 为准
-- `/pay/mock/[orderNo]` 与 `/api/pay/mock/complete` 已补齐 mock 支付闭环，前台点击即可真实回写订单状态
-- `/orders/[orderNo]` 已可查看订单详情与支付状态
-- `/payment-diagnostics` 与 `/api/payment/diagnostics` 已可检查当前支付宝配置是否会走真实支付或 mock
-- `bailongma` 已升级为区块化专题页结构，可后台管理 hero / feature grid / stats / cta
-- 站点设置已驱动前台基础品牌层：SEO metadata、主题主色、页脚联系信息、导航与站点名称
-- 博客与商品详情页已开始消费 Payload 内容字段：摘要、正文、发布时间、封面图、商品图库与页面级 metadata
-- 博客列表与商品列表已升级为内容卡片结构，可消费摘要、主图和基础信息
-- 首页已升级为聚合入口，串联专题页、最新文章、精选商品、后台入口与支付诊断
-- 通用页面路由已打通，后台新建并发布的普通页面可直接通过 slug 前台访问
-- `payload-geekclaw` 已在服务器通过 `pm2` 跑通，生产端口为 `26223`
-- `geekclaw.ai` 当前承接 GeekClaw 产品组合官网
-- `opc.geekclaw.ai` 当前承接 OPC 官网入口
-- `geekclaw.ai/liloavatar` 当前承接 LiloAvatar 官网入口
+- 支付宝真实密钥接入后的完整联调
+- 支付宝异步通知真实验签与生产回调验证
+- 真实支付成功后的对账、异常补偿和长期运维细节
+- 更细的后台导航定制和角色化原生 Admin 体验
 
-当前未完成：
+## 环境与运行
 
-- 支付宝真实密钥配置后的联调
-- 支付宝真实密钥配置后的联调
-- 支付成功后的真实异步通知联调与状态回写验证
-- 商品订单的支付成功/失败页细化与用户提示优化
-
-## 初始化步骤
-
-安装依赖后，使用：
-
-```bash
-npm install
-npm run seed
-```
-
-当前服务器如果内存较小，建议至少保留 `4G` swap，否则 `next build` 可能被系统 OOM killer 杀掉。
-
-后台入口预期为：
-
-```text
-/admin
-```
-
-## 开发运行
+开发：
 
 ```bash
 cd /data/clawos/payload
 cp .env.local.example .env.local
+npm install
+npm run seed
 npm run dev
 ```
 
-当前开发默认端口：
-
-```text
-3000
-```
-
-## 线上运行
-
-当前 `geekclaw.ai` 和 `opc.geekclaw.ai` 通过 1Panel/OpenResty 反向代理到：
-
-```text
-http://127.0.0.1:26223
-```
-
-对应 PM2 进程为 `payload-geekclaw`。
-
-## 内容边界
-
-- 前台文案只使用自有品牌：GeekClaw、OPC、LiloAvatar
-- 可以参考行业产品的信息架构，但不得暴露参考产品名称、来源或改写关系
-- 主机销售、电商商品、价格、库存、履约说明均保留在 Payload 后台编辑
-
-## PM2 运行
+生产构建与启动：
 
 ```bash
 cd /data/clawos/payload
-pm2 start ecosystem.config.cjs --only payload-geekclaw
+npm run build
+pm2 start ecosystem.config.cjs
 ```
 
-如已存在进程，使用：
+已存在 PM2 进程时：
 
 ```bash
 cd /data/clawos/payload
 npm run build
 pm2 restart payload-geekclaw
+pm2 restart payload-orders-maintenance
 ```
 
-## 支付联调
+当前生产端口：
 
-本地可重复执行支付冒烟脚本：
+```text
+http://127.0.0.1:26223
+```
+
+当前 PM2 进程：
+
+- `payload-geekclaw`
+- `payload-orders-maintenance`
+
+## 常用脚本
+
+```bash
+npm run seed
+npm run build
+npm run smoke:payment
+npm run close:expired-orders
+npm run sync:processing-orders
+npm run orders:maintenance
+npm run backfill:order-payment-chain
+npm run payload -- generate:types
+```
+
+## 支付说明
+
+当前默认仍允许 `mock` 支付闭环，便于开发和回归：
+
+- `GET /payment-diagnostics`
+- `GET /pay/mock/[orderNo]`
+- `POST /api/pay/mock/complete`
+- `POST /api/orders/pay`
+- `POST /api/orders/query-payment`
+- `POST /api/orders/review-payment`
+- `POST /api/orders/close-expired`
+- `POST /api/orders/sync-processing`
+
+支付冒烟：
 
 ```bash
 cd /data/clawos/payload
 npm run smoke:payment
 ```
 
-默认会请求 `http://127.0.0.1:26223`，也可以覆盖：
+如需指定目标地址：
 
 ```bash
 cd /data/clawos/payload
 PAYMENT_SMOKE_BASE_URL=http://127.0.0.1:3000 npm run smoke:payment
 ```
 
-当前脚本会覆盖这些关键分支：
+当前冒烟覆盖：
 
-- 创建一张测试订单
-- 用错误金额访问 `/pay-success`，确认不会误把订单改成已支付
-- 发起 `/api/orders/pay`，确认支付入口仍可用
-- 构造基础 `/api/pay/alipay/notify`
-- 当前未配置支付宝公钥时，应返回 `missing public key`
-- 若未来配置了支付宝公钥，则至少会拒绝缺少 `trade_status` 的 notify
+- 创建测试订单
+- 错误金额访问 `/pay-success` 不会误改为已支付
+- 发起 `/api/orders/pay`
+- 缺少真实支付宝公钥时，`/api/pay/alipay/notify` 被阻断
+- `query-payment`、`sync-processing`、`close-expired` 可正常执行
+- 已关闭订单不能重新进入支付
 
-## 环境说明
+## 角色与权限
 
-- 当前服务器已挂载 `/swapfile.clawos` 作为 `4G` swap，用于稳定执行 `next build`
-- Payload 已在配置中显式接入 `sharp`，图片尺寸处理警告应当消失
-- 当前机器内存仍然不高，避免同时并发跑多个 `next dev` / `next build` 进程，否则仍可能触发 OOM
+- `super-admin`
+  可管理所有内容、商城、支付、用户与系统入口
+- `ops`
+  可管理商品、订单、支付、履约、录单、库存、报表和 `payment-settings`
+- `editor`
+  可管理页面、文章、媒体、站点设置与内容治理
 
-## 目录说明
+当前已额外收口：
 
-- `src/collections/`
-  页面、博客、商品、订单、媒体模型
-- `src/globals/`
-  站点设置与全局配置
+- `editor` 在 Payload 原生左侧导航里不再看到商品、订单、商城 taxonomy
+- `ops` 在 Payload 原生左侧导航里不再看到页面、文章、内容 taxonomy
+- `editor` 即使拿到商城集合直链，也不能再进入 `products / orders / product-categories / product-tags` 的原生 Admin
+- `ops` 即使拿到内容集合直链，也不能再进入 `pages / posts / post-categories / post-tags` 的原生 Admin
+- 支付参数已从 `site-settings` 拆到独立的 `payment-settings` 全局，避免内容配置和支付密钥混在一起
+- 联调页会检测旧支付配置遗留，必要时可直接从后台一键迁移
+- `editor` 不再看到订单工作台里的批量取消、支付复核、履约推进、交付维护和运营备注操作
+- `editor` 不再看到原生订单编辑摘要里的支付复核与履约操作
+- 公开订单详情页只有已登录的 `super-admin / ops` 才会看到后台处理区
+
+## 当前主要后台入口
+
+- `/admin`
+- `/admin/ops-center`
+- `/admin/orders-workbench`
+- `/admin/manual-order`
+- `/admin/payment-readiness`
+- `/admin/payment-observability`
+- `/admin/globals/payment-settings`
+- `/admin/inventory-occupancy`
+- `/admin/product-orders`
+- `/admin/sales-fulfillment`
+- `/admin/content-governance`
+- `/admin/media-governance`
+
+## 目录
+
 - `src/app/(frontend)/`
-  官网前台页面
+  官网前台
 - `src/app/(payload)/`
-  Payload Admin 与 API
-- `src/scripts/seed.ts`
-  默认内容初始化脚本
-- `docs/implementation-plan.md`
-  当前实施计划
+  Payload Admin 与后台页
+- `src/app/api/`
+  订单、支付、导出、维护接口
+- `src/collections/`
+  页面、文章、商品、订单、素材、taxonomy 集合
+- `src/globals/`
+  站点设置与支付设置
+- `src/components/admin/`
+  后台运营组件
+- `src/lib/`
+  订单、支付、治理、权限、前台数据逻辑
+- `src/scripts/`
+  seed、支付冒烟、维护、回填脚本
 
-## 当前可用能力
+## 运维备注
 
-- 页面管理：官网首页、专题页、二级页
-- 专题页区块：Hero、Feature Grid、Stats、CTA
-- 博客发布：文章分类、摘要、封面、SEO
-- 商品管理：商品、价格、封面、详情、状态、SKU
-- 商品可售控制：支持库存开关、库存数量、是否允许缺货接单、单笔限购
-- 订单管理：订单号、支付状态、收货信息
-- 订单后台：支持来源、邮箱、运营备注、支付流水查看
-- 后台工作台：已支持查看最近异常/处理中订单，以及“已支付待履约”订单队列
-- 订单运营工作台：新增 `/admin/orders-workbench`，集中查看待支付、待履约、异常单
-- 工作台快捷操作：待履约订单支持直接标记“准备中 / 已完成”
-- 工作台筛选跳转：支持一键跳到 Payload 后台的支付失败、支付中、待履约订单列表
-- 订单取消：前台订单详情页和后台工作台都可取消未支付订单，取消后会释放库存占用
-- 超时关闭：未支付订单支持按超时时间自动关闭，默认 30 分钟
-- 支付复核：超过阈值仍停留在 `processing` 的订单会进入待复核队列，后台可手动确认已支付或标记失败
-- 履约快捷接口：`POST /api/orders/fulfillment` 已可供工作台直接更新订单履约状态
-- 工作台交付录入：待履约订单支持直接填写交付方式、跟踪号和交付备注
-- 订单事件时间线：支付动作、履约动作、运营备注变更都会写入统一事件流，前台订单详情和后台事件页可追踪
-- 订单列表默认视图：已调整为偏运营处理的列组合，优先展示支付状态、履约状态、交付方式、金额和支付时间
-- 后台仪表盘：支付状态面板已提供异常单、支付中、待履约列表的快捷入口
-- 订单履约：后台可维护交付状态、交付方式、跟踪号和交付备注，前台订单详情可展示
-- 订单一致性：后台修改 `paymentStatus` / `fulfillmentStatus` 时，会自动补齐 `paidAt` / `fulfilledAt`，并同步关键订单状态
-- 支付诊断：支持检查 appId / 密钥 / notify / return / gateway 的配置状态与来源
-- 超时关闭入口：支持受 `CRON_SECRET` 保护的 `POST /api/orders/close-expired`，也支持 `npm run close:expired-orders`
-- 支付骨架：订单创建、支付发起、mock 支付、支付跳转占位页、notify/return/失败页
-- 下单校验：创建订单时会校验商品是否上架、是否超出单笔限购，以及库存不足时阻止超卖
-- 取消保护：已取消订单会拒绝后续支付发起、mock 支付回写和支付宝回调成功回写
-- 超时关闭保护：超时关闭后的订单同样不能重新进入支付流程
-- 支付复核入口：支持 `POST /api/orders/review-payment`，供后台把 stale processing 订单转为已支付或支付失败
-- 支付承接页：已支持订单创建后发起支付、失败后重新发起、mock 成功/失败状态回写，以及成功/失败页展示订单摘要
-- 支付成功兜底：当支付宝同步返回带回 `trade_status=TRADE_SUCCESS/TRADE_FINISHED` 时，成功页会先把 `processing` 订单兜底更新为 `paid`，并写入支付事件
-- 媒体管理：图片与素材上传
-- 站点设置：品牌、SEO、导航、页脚、联系信息、主题主色
-- 前台壳层：已消费站点名称、主色、SEO 元信息，并为 logo 接入预留了前台展示
-- 内容详情页：博客详情已支持发布时间/摘要/正文/封面；商品详情已支持摘要/正文/封面/图库与页面级 SEO
-- 内容列表页：博客列表已支持卡片化展示与时间信息；商品列表已支持卡片化展示、可售状态与封面图入口
-- 商城详情页：已展示 SKU、购买说明、库存提示与缺货/限购状态
-- 首页聚合：已支持专题入口、最新文章、精选商品和后台工作流说明
-- 普通页面发布：`pages` 集合中的非保留 slug 页面已可直接前台访问，并消费页面级 SEO
-
-## 下一步
-
-- 用真实支付宝密钥完成联调
-- 完成支付成功后的异步通知与订单状态自动回写验证
-- 继续扩展专题页区块，向 `bailongma.top` 的表达力靠拢
-- 增加订单列表筛选、批量处理与更细的运营备注工作流
+- 当前服务器依赖 `4G swap` 来降低 `next build` 被 OOM kill 的风险
+- 支付配置读取顺序为：环境变量优先，`payment-settings` 回退
+- 若修改了 PM2 环境变量，需要重启 `payload-geekclaw`
+- 真实支付宝联调前，不要把 `mock` 链路当成生产验收完成

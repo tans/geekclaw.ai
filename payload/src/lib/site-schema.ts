@@ -33,6 +33,90 @@ export function ensureSiteSettingsSchema() {
       db.exec('alter table site_settings add column payment_seller_id text')
     }
 
+    if (!names.has('home_eyebrow')) {
+      db.exec("alter table site_settings add column home_eyebrow text default 'GeekClaw AI Agent'")
+    }
+
+    if (!names.has('home_hero_title')) {
+      db.exec("alter table site_settings add column home_hero_title text default '让 AI Agent 进入企业真实工作流'")
+    }
+
+    if (!names.has('home_hero_description')) {
+      db.exec("alter table site_settings add column home_hero_description text")
+    }
+
+    if (!names.has('home_primary_action_label')) {
+      db.exec("alter table site_settings add column home_primary_action_label text default '预约演示'")
+    }
+
+    if (!names.has('home_primary_action_href')) {
+      db.exec("alter table site_settings add column home_primary_action_href text default 'mailto:team@geekclaw.ai?subject=GeekClaw%20演示预约'")
+    }
+
+    if (!names.has('home_secondary_action_label')) {
+      db.exec("alter table site_settings add column home_secondary_action_label text default '查看部署方案'")
+    }
+
+    if (!names.has('home_secondary_action_href')) {
+      db.exec("alter table site_settings add column home_secondary_action_href text default '/#deployment'")
+    }
+
+    if (!names.has('home_panel_eyebrow')) {
+      db.exec("alter table site_settings add column home_panel_eyebrow text default 'Product System'")
+    }
+
+    if (!names.has('home_panel_title')) {
+      db.exec("alter table site_settings add column home_panel_title text default '从知识理解到任务执行，一套企业可控的 Agent 工作台。'")
+    }
+
+    if (!names.has('home_panel_body')) {
+      db.exec('alter table site_settings add column home_panel_body text')
+    }
+
+    if (!names.has('home_featured_pages_heading')) {
+      db.exec("alter table site_settings add column home_featured_pages_heading text default '企业 Agent 能力'")
+    }
+
+    if (!names.has('home_featured_pages_description')) {
+      db.exec('alter table site_settings add column home_featured_pages_description text')
+    }
+
+    if (!names.has('home_featured_posts_heading')) {
+      db.exec("alter table site_settings add column home_featured_posts_heading text default '适用业务场景'")
+    }
+
+    if (!names.has('home_featured_posts_description')) {
+      db.exec('alter table site_settings add column home_featured_posts_description text')
+    }
+
+    if (!names.has('home_featured_products_heading')) {
+      db.exec("alter table site_settings add column home_featured_products_heading text default '部署与交付方式'")
+    }
+
+    if (!names.has('home_featured_products_description')) {
+      db.exec('alter table site_settings add column home_featured_products_description text')
+    }
+
+    if (!names.has('home_cta_eyebrow')) {
+      db.exec("alter table site_settings add column home_cta_eyebrow text default 'Start Building'")
+    }
+
+    if (!names.has('home_cta_title')) {
+      db.exec("alter table site_settings add column home_cta_title text default '从一个可验收的 Agent 场景开始'")
+    }
+
+    if (!names.has('home_cta_description')) {
+      db.exec('alter table site_settings add column home_cta_description text')
+    }
+
+    if (!names.has('home_cta_label')) {
+      db.exec("alter table site_settings add column home_cta_label text default '预约部署评估'")
+    }
+
+    if (!names.has('home_cta_href')) {
+      db.exec("alter table site_settings add column home_cta_href text default 'mailto:team@geekclaw.ai?subject=GeekClaw%20部署评估'")
+    }
+
     ensured = true
   } finally {
     db.close()

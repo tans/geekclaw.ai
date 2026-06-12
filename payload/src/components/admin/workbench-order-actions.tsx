@@ -11,6 +11,7 @@ export function WorkbenchOrderActions({
   trackingNo,
   deliveryNote,
   operatorNote,
+  allowCommerceActions = true,
 }: {
   orderNo: string
   fulfillmentStatus?: string | null
@@ -18,12 +19,14 @@ export function WorkbenchOrderActions({
   trackingNo?: string | null
   deliveryNote?: string | null
   operatorNote?: string | null
+  allowCommerceActions?: boolean
 }) {
   const router = useRouter()
   const [pendingAction, setPendingAction] = useState<'processing' | 'completed' | null>(null)
   const [savingDetails, setSavingDetails] = useState(false)
   const [savingOperatorNote, setSavingOperatorNote] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [trackingValue, setTrackingValue] = useState(trackingNo || '')
   const [noteValue, setNoteValue] = useState(deliveryNote || '')
   const [operatorNoteValue, setOperatorNoteValue] = useState(operatorNote || '')
@@ -32,6 +35,7 @@ export function WorkbenchOrderActions({
   async function runAction(nextStatus: 'processing' | 'completed') {
     setPendingAction(nextStatus)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/fulfillment', {
@@ -54,6 +58,7 @@ export function WorkbenchOrderActions({
         throw new Error(result.error || 'FULFILLMENT_UPDATE_FAILED')
       }
 
+      setSuccess(nextStatus === 'processing' ? '订单已标记为准备中。' : '订单已标记为已完成。')
       router.refresh()
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'FULFILLMENT_UPDATE_FAILED')
@@ -65,6 +70,7 @@ export function WorkbenchOrderActions({
   async function saveDetails() {
     setSavingDetails(true)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/fulfillment', {
@@ -90,6 +96,7 @@ export function WorkbenchOrderActions({
         throw new Error(result.error || 'FULFILLMENT_UPDATE_FAILED')
       }
 
+      setSuccess('交付信息已保存。')
       router.refresh()
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'FULFILLMENT_UPDATE_FAILED')
@@ -101,6 +108,7 @@ export function WorkbenchOrderActions({
   async function saveOperatorNote() {
     setSavingOperatorNote(true)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/operator-note', {
@@ -120,6 +128,7 @@ export function WorkbenchOrderActions({
         throw new Error(result.error || 'OPERATOR_NOTE_UPDATE_FAILED')
       }
 
+      setSuccess('运营备注已保存。')
       router.refresh()
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'OPERATOR_NOTE_UPDATE_FAILED')
@@ -144,12 +153,12 @@ export function WorkbenchOrderActions({
 
         <div>
           <button
-            disabled={savingOperatorNote || pendingAction !== null || savingDetails}
+            disabled={!allowCommerceActions || savingOperatorNote || pendingAction !== null || savingDetails}
             onClick={saveOperatorNote}
             style={buttonGhost}
             type="button"
           >
-            {savingOperatorNote ? '正在保存备注...' : '保存运营备注'}
+            {!allowCommerceActions ? '无权限维护备注' : savingOperatorNote ? '正在保存备注...' : '保存运营备注'}
           </button>
         </div>
       </div>
@@ -175,34 +184,51 @@ export function WorkbenchOrderActions({
         </label>
 
         <div>
-          <button disabled={savingDetails || pendingAction !== null} onClick={saveDetails} style={buttonGhost} type="button">
-            {savingDetails ? '正在保存信息...' : '保存交付信息'}
+          <button disabled={!allowCommerceActions || savingDetails || pendingAction !== null} onClick={saveDetails} style={buttonGhost} type="button">
+            {!allowCommerceActions ? '无权限修改交付' : savingDetails ? '正在保存信息...' : '保存交付信息'}
           </button>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {fulfillmentStatus !== 'processing' ? (
-          <button disabled={pendingAction !== null || savingDetails} onClick={() => runAction('processing')} style={buttonPrimary} type="button">
-            {pendingAction === 'processing' ? '正在更新...' : '标记准备中'}
+          <button
+            disabled={!allowCommerceActions || pendingAction !== null || savingDetails}
+            onClick={() => runAction('processing')}
+            style={buttonPrimary}
+            type="button"
+          >
+            {!allowCommerceActions ? '无权限推进履约' : pendingAction === 'processing' ? '正在更新...' : '标记准备中'}
           </button>
         ) : null}
         {fulfillmentStatus !== 'completed' ? (
-          <button disabled={pendingAction !== null || savingDetails} onClick={() => runAction('completed')} style={buttonSecondary} type="button">
-            {pendingAction === 'completed' ? '正在完成...' : '标记已完成'}
+          <button
+            disabled={!allowCommerceActions || pendingAction !== null || savingDetails}
+            onClick={() => runAction('completed')}
+            style={buttonSecondary}
+            type="button"
+          >
+            {!allowCommerceActions ? '无权限推进履约' : pendingAction === 'completed' ? '正在完成...' : '标记已完成'}
           </button>
         ) : null}
-        <CancelOrderButton
-          orderNo={orderNo}
-          label="取消订单"
-          reason="后台运营取消订单，库存占用已释放。"
-          source="operator"
-          variant="secondary"
-        />
+        {allowCommerceActions ? (
+          <CancelOrderButton
+            orderNo={orderNo}
+            label="取消订单"
+            reason="后台运营取消订单，库存占用已释放。"
+            source="operator"
+            variant="secondary"
+          />
+        ) : null}
       </div>
       {error ? (
         <p style={{ margin: 0, color: '#b42318', fontSize: 13 }}>
           操作失败：{error}
+        </p>
+      ) : null}
+      {!error && success ? (
+        <p style={{ margin: 0, color: '#265b35', fontSize: 13 }}>
+          {success}
         </p>
       ) : null}
     </div>

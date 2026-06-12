@@ -7,9 +7,12 @@
     "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
-    "seed": "cross-env NODE_OPTIONS=--no-deprecation node --experimental-strip-types src/scripts/seed.ts",
-    "smoke:payment": "cross-env NODE_OPTIONS=--no-deprecation node --experimental-strip-types src/scripts/payment-smoke.ts",
-    "close:expired-orders": "cross-env NODE_OPTIONS=--no-deprecation node --experimental-strip-types src/scripts/close-expired-orders.ts"
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/seed.ts",
+    "smoke:payment": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/payment-smoke.ts",
+    "close:expired-orders": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/close-expired-orders.ts",
+    "sync:processing-orders": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/sync-processing-orders.ts",
+    "orders:maintenance": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/orders-maintenance.ts",
+    "backfill:order-payment-chain": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_MIGRATING=true tsx src/scripts/backfill-order-payment-chain.ts"
   },
   "dependencies": {
     "@payloadcms/db-sqlite": "3.85.1",

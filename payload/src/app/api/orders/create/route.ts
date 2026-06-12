@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createOrder } from '@/lib/orders'
+import { createOrder, markOrderPaid } from '@/lib/orders'
 
 export async function POST(request: Request) {
   try {
@@ -7,6 +7,7 @@ export async function POST(request: Request) {
       customerEmail?: string
       customerName?: string
       customerPhone?: string
+      markAsPaid?: boolean
       productSlug?: string
       quantity?: number
       source?: 'shop' | 'landing' | 'manual'
@@ -27,7 +28,26 @@ export async function POST(request: Request) {
       source: body.source || 'shop',
     })
 
-    return NextResponse.json(order, { status: 201 })
+    if (body.markAsPaid) {
+      await markOrderPaid({
+        orderNo: order.orderNo,
+        source: 'operator',
+        message: '后台录单时已确认线下到账，订单直接标记为支付成功。',
+        paymentPayload: {
+          provider: 'manual-offline',
+          source: body.source || 'manual',
+          markedPaidAt: new Date().toISOString(),
+        },
+      })
+    }
+
+    return NextResponse.json(
+      {
+        ...order,
+        markedAsPaid: Boolean(body.markAsPaid),
+      },
+      { status: 201 },
+    )
   } catch (error) {
     const code = error instanceof Error ? error.message : 'ORDER_CREATE_FAILED'
     const status =

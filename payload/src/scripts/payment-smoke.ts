@@ -48,7 +48,7 @@ async function main() {
 
   const orderPageBeforePay = await getText(`${baseUrl}/orders/${encodeURIComponent(order.orderNo)}`)
   assertContains(orderPageBeforePay, '支付状态')
-  assertContains(orderPageBeforePay, 'unpaid')
+  assertContains(orderPageBeforePay, '未支付')
   assertContains(orderPageBeforePay, '继续支付')
   logStep('order stays unpaid after mismatched return')
 
@@ -79,9 +79,9 @@ async function main() {
   const orderPageAfterNotify = await getText(`${baseUrl}/orders/${encodeURIComponent(order.orderNo)}`)
   assertContains(orderPageAfterNotify, '支付状态')
   if (diagnostics.publicKey.configured) {
-    assertContains(orderPageAfterNotify, 'processing')
+    assertContains(orderPageAfterNotify, '支付中')
   } else {
-    assertContains(orderPageAfterNotify, 'processing')
+    assertContains(orderPageAfterNotify, '支付中')
   }
   logStep('order remains non-paid after notify rejection')
 
@@ -89,13 +89,28 @@ async function main() {
     action: 'no_change' | 'marked_paid' | 'marked_failed'
     tradeStatus: string | null
     isMock: boolean
-  }>(`${baseUrl}/api/orders/query-payment`, {
-    orderNo: order.orderNo,
-  })
+  }>(
+    `${baseUrl}/api/orders/query-payment`,
+    {
+      orderNo: order.orderNo,
+    },
+    process.env.CRON_SECRET || 'change-me-too',
+  )
   if (queryPayment.action !== 'no_change') {
     throw new Error(`expected query-payment to keep processing order unchanged in smoke, got ${queryPayment.action}`)
   }
   logStep(`query payment returned action=${queryPayment.action} mock=${queryPayment.isMock}`)
+
+  const batchSync = await postAuthorizedJson<{
+    scannedCount: number
+    results: Array<{ orderNo: string; action: 'no_change' | 'marked_paid' | 'marked_failed' }>
+  }>(`${baseUrl}/api/orders/sync-processing`, process.env.CRON_SECRET || 'change-me-too', {
+    limit: 5,
+  })
+  if (!Number.isFinite(batchSync.scannedCount) || batchSync.scannedCount < 0) {
+    throw new Error('expected batch sync to return a valid scannedCount')
+  }
+  logStep(`batch sync scanned=${batchSync.scannedCount}`)
 
   const expiredOrder = await createOrder()
   await backdateOrder(expiredOrder.orderNo, 45)
@@ -144,12 +159,13 @@ async function getJson<T>(url: string) {
   return JSON.parse(text) as T
 }
 
-async function postJson<T>(url: string, body: Record<string, unknown>) {
+async function postJson<T>(url: string, body: Record<string, unknown>, bearer?: string) {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
     },
     body: JSON.stringify(body),
   })
@@ -178,13 +194,15 @@ async function postJsonExpectStatus(url: string, body: Record<string, unknown>) 
   }
 }
 
-async function postAuthorizedJson<T>(url: string, secret: string) {
+async function postAuthorizedJson<T>(url: string, secret: string, body?: Record<string, unknown>) {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${secret}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
+    body: body ? JSON.stringify(body) : undefined,
   })
   const text = await response.text()
 

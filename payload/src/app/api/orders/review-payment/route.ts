@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
+import { ensureRole, hasSystemAuthorization } from '@/lib/access'
 import { reviewProcessingOrder } from '@/lib/orders'
 
 export async function POST(request: Request) {
   try {
+    if (!hasSystemAuthorization(request.headers)) {
+      const payload = await getPayload({ config })
+      const auth = await payload.auth({ headers: request.headers })
+      ensureRole(auth.user ? ({ user: auth.user } as never) : undefined, ['super-admin', 'ops'])
+    }
+
     const body = (await request.json()) as {
       orderNo?: string
       outcome?: 'paid' | 'failed'
@@ -32,6 +41,8 @@ export async function POST(request: Request) {
     const status =
       code === 'ORDER_NOT_FOUND'
         ? 404
+        : code === 'FORBIDDEN'
+          ? 403
         : code === 'ORDER_CANCELLED' || code === 'ORDER_NOT_PROCESSING'
           ? 400
           : 500

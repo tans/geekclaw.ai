@@ -70,7 +70,11 @@ export interface Config {
     users: User;
     media: Media;
     pages: Page;
+    'post-categories': PostCategory;
+    'post-tags': PostTag;
     posts: Post;
+    'product-categories': ProductCategory;
+    'product-tags': ProductTag;
     products: Product;
     orders: Order;
     'payload-kv': PayloadKv;
@@ -83,7 +87,11 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    'post-categories': PostCategoriesSelect<false> | PostCategoriesSelect<true>;
+    'post-tags': PostTagsSelect<false> | PostTagsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
+    'product-categories': ProductCategoriesSelect<false> | ProductCategoriesSelect<true>;
+    'product-tags': ProductTagsSelect<false> | ProductTagsSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -97,9 +105,11 @@ export interface Config {
   fallbackLocale: null;
   globals: {
     'site-settings': SiteSetting;
+    'payment-settings': PaymentSetting;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'payment-settings': PaymentSettingsSelect<false> | PaymentSettingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -286,13 +296,48 @@ export interface Page {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-categories".
+ */
+export interface PostCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-tags".
+ */
+export interface PostTag {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts".
  */
 export interface Post {
   id: number;
   title: string;
   slug: string;
-  category?: string | null;
+  /**
+   * 博客列表、详情页和内容筛选默认使用这个主分类。
+   */
+  primaryCategory?: (number | null) | PostCategory;
+  /**
+   * 可用于扩展筛选、专题聚合和首页内容编排。
+   */
+  categories?: (number | PostCategory)[] | null;
+  /**
+   * 适合观点、专题、阶段标签和跨分类内容聚合。
+   */
+  tags?: (number | PostTag)[] | null;
   excerpt?: string | null;
   cover?: (number | null) | Media;
   content: {
@@ -317,6 +362,30 @@ export interface Post {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-categories".
+ */
+export interface ProductCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-tags".
+ */
+export interface ProductTag {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products".
  */
 export interface Product {
@@ -324,6 +393,22 @@ export interface Product {
   name: string;
   slug: string;
   summary?: string | null;
+  /**
+   * 商城列表和导购筛选默认使用这个主分类。
+   */
+  primaryCategory?: (number | null) | ProductCategory;
+  /**
+   * 可用于多分类归档、专题筛选和首页商品编排。
+   */
+  categories?: (number | ProductCategory)[] | null;
+  /**
+   * 适合库存策略、硬件能力、部署形态和运营标签。
+   */
+  tags?: (number | ProductTag)[] | null;
+  /**
+   * 给运营和履约使用的商品编号。
+   */
+  sku?: string | null;
   cover?: (number | null) | Media;
   gallery?:
     | {
@@ -333,6 +418,22 @@ export interface Product {
     | null;
   price: number;
   currency: string;
+  /**
+   * 开启后，下单会按库存数校验可售数量。
+   */
+  trackInventory?: boolean | null;
+  /**
+   * 库存不足时仍允许继续接单。
+   */
+  allowBackorder?: boolean | null;
+  /**
+   * 当前可售库存总量。
+   */
+  stockQuantity?: number | null;
+  /**
+   * 单笔订单最多可购买数量，留空表示不限制。
+   */
+  limitPerOrder?: number | null;
   status: 'draft' | 'active' | 'archived';
   content?: {
     root: {
@@ -364,10 +465,16 @@ export interface Order {
   items: {
     product: number | Product;
     quantity: number;
-    unitPrice: number;
+    /**
+     * 留空时会按当前商品价格自动回填。
+     */
+    unitPrice?: number | null;
     id?: string | null;
   }[];
-  totalAmount: number;
+  /**
+   * 保存时会根据商品数量和单价自动计算总价。
+   */
+  totalAmount?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
   customerEmail?: string | null;
@@ -411,6 +518,23 @@ export interface Order {
     | number
     | boolean
     | null;
+  /**
+   * 用于原生订单列表和工作台的链路筛选标签。
+   */
+  paymentChainTags?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  paymentHasIssue?: boolean | null;
+  paymentHasNotifyIssue?: boolean | null;
+  paymentHasReturnRecord?: boolean | null;
+  paymentHasQueryRecord?: boolean | null;
+  paymentHasFinalResult?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -451,8 +575,24 @@ export interface PayloadLockedDocument {
         value: number | Page;
       } | null)
     | ({
+        relationTo: 'post-categories';
+        value: number | PostCategory;
+      } | null)
+    | ({
+        relationTo: 'post-tags';
+        value: number | PostTag;
+      } | null)
+    | ({
         relationTo: 'posts';
         value: number | Post;
+      } | null)
+    | ({
+        relationTo: 'product-categories';
+        value: number | ProductCategory;
+      } | null)
+    | ({
+        relationTo: 'product-tags';
+        value: number | ProductTag;
       } | null)
     | ({
         relationTo: 'products';
@@ -642,17 +782,63 @@ export interface PagesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-categories_select".
+ */
+export interface PostCategoriesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-tags_select".
+ */
+export interface PostTagsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "posts_select".
  */
 export interface PostsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  category?: T;
+  primaryCategory?: T;
+  categories?: T;
+  tags?: T;
   excerpt?: T;
   cover?: T;
   content?: T;
   publishedAt?: T;
   status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-categories_select".
+ */
+export interface ProductCategoriesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "product-tags_select".
+ */
+export interface ProductTagsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -664,6 +850,10 @@ export interface ProductsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   summary?: T;
+  primaryCategory?: T;
+  categories?: T;
+  tags?: T;
+  sku?: T;
   cover?: T;
   gallery?:
     | T
@@ -673,6 +863,10 @@ export interface ProductsSelect<T extends boolean = true> {
       };
   price?: T;
   currency?: T;
+  trackInventory?: T;
+  allowBackorder?: T;
+  stockQuantity?: T;
+  limitPerOrder?: T;
   status?: T;
   content?: T;
   updatedAt?: T;
@@ -713,6 +907,12 @@ export interface OrdersSelect<T extends boolean = true> {
   paidAt?: T;
   paymentLastError?: T;
   paymentEvents?: T;
+  paymentChainTags?: T;
+  paymentHasIssue?: T;
+  paymentHasNotifyIssue?: T;
+  paymentHasReturnRecord?: T;
+  paymentHasQueryRecord?: T;
+  paymentHasFinalResult?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -776,33 +976,100 @@ export interface SiteSetting {
         id?: string | null;
       }[]
     | null;
-  payment?: {
-    provider?: 'alipay' | null;
-    /**
-     * 支付宝异步通知地址。若同时配置了环境变量，环境变量优先。
-     */
-    notifyUrl?: string | null;
-    /**
-     * 支付宝同步返回地址。建议保持线上 HTTPS 地址。
-     */
-    returnUrl?: string | null;
-    /**
-     * 支付宝应用 App ID。真实联调前，可用 /payment-diagnostics 检查当前服务端是否已识别。
-     */
-    appId?: string | null;
-    /**
-     * 默认使用支付宝生产网关。仅在特殊环境下调整。
-     */
-    gateway?: string | null;
-    /**
-     * 应用私钥。敏感配置更推荐使用环境变量注入。
-     */
-    privateKey?: string | null;
-    /**
-     * 支付宝公钥，用于 notify 验签。未配置时，异步通知无法完成验签回写。
-     */
-    publicKey?: string | null;
+  home: {
+    eyebrow?: string | null;
+    heroTitle: string;
+    heroDescription?: string | null;
+    primaryActionLabel?: string | null;
+    primaryActionHref?: string | null;
+    secondaryActionLabel?: string | null;
+    secondaryActionHref?: string | null;
+    panelEyebrow?: string | null;
+    panelTitle?: string | null;
+    panelBody?: string | null;
+    panelMetrics?:
+      | {
+          value: string;
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+    featuredPagesHeading?: string | null;
+    featuredPagesDescription?: string | null;
+    featuredPages?: (number | Page)[] | null;
+    featuredPostsHeading?: string | null;
+    featuredPostsDescription?: string | null;
+    featuredPosts?: (number | Post)[] | null;
+    featuredProductsHeading?: string | null;
+    featuredProductsDescription?: string | null;
+    featuredProducts?: (number | Product)[] | null;
+    ctaEyebrow?: string | null;
+    ctaTitle?: string | null;
+    ctaDescription?: string | null;
+    ctaLabel?: string | null;
+    ctaHref?: string | null;
   };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-settings".
+ */
+export interface PaymentSetting {
+  id: number;
+  /**
+   * 当前站点仅接入支付宝支付。
+   */
+  provider?: 'alipay' | null;
+  /**
+   * 支付宝异步通知地址。若同时配置了环境变量，环境变量优先。
+   */
+  notifyUrl?: string | null;
+  /**
+   * 支付宝同步返回地址。建议保持线上 HTTPS 地址。
+   */
+  returnUrl?: string | null;
+  /**
+   * 支付宝应用 App ID。真实联调前，可用 /payment-diagnostics 检查当前服务端是否已识别。
+   */
+  appId?: string | null;
+  /**
+   * 支付宝收款账号对应的 seller_id。配置后可用于异步通知的业务校验。
+   */
+  sellerId?: string | null;
+  /**
+   * 默认使用支付宝生产网关。仅在特殊环境下调整。
+   */
+  gateway?: string | null;
+  /**
+   * 应用私钥。敏感配置更推荐使用环境变量注入；后台填写时仅限 ops / super-admin。
+   */
+  privateKey?: string | null;
+  /**
+   * 支付宝公钥，用于 notify 验签。未配置时，异步通知无法完成验签回写。
+   */
+  publicKey?: string | null;
+  /**
+   * 后台回退值是否已保存应用私钥。
+   */
+  privateKeyConfigured?: boolean | null;
+  /**
+   * 当前后台私钥行数摘要。
+   */
+  privateKeyLineCount?: number | null;
+  /**
+   * 后台回退值是否已保存支付宝公钥。
+   */
+  publicKeyConfigured?: boolean | null;
+  /**
+   * 当前后台公钥行数摘要。
+   */
+  publicKeyLineCount?: number | null;
+  /**
+   * 最近一次通过后台更新密钥的时间。
+   */
+  keysUpdatedAt?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -825,17 +1092,63 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         href?: T;
         id?: T;
       };
-  payment?:
+  home?:
     | T
     | {
-        provider?: T;
-        notifyUrl?: T;
-        returnUrl?: T;
-        appId?: T;
-        gateway?: T;
-        privateKey?: T;
-        publicKey?: T;
+        eyebrow?: T;
+        heroTitle?: T;
+        heroDescription?: T;
+        primaryActionLabel?: T;
+        primaryActionHref?: T;
+        secondaryActionLabel?: T;
+        secondaryActionHref?: T;
+        panelEyebrow?: T;
+        panelTitle?: T;
+        panelBody?: T;
+        panelMetrics?:
+          | T
+          | {
+              value?: T;
+              label?: T;
+              id?: T;
+            };
+        featuredPagesHeading?: T;
+        featuredPagesDescription?: T;
+        featuredPages?: T;
+        featuredPostsHeading?: T;
+        featuredPostsDescription?: T;
+        featuredPosts?: T;
+        featuredProductsHeading?: T;
+        featuredProductsDescription?: T;
+        featuredProducts?: T;
+        ctaEyebrow?: T;
+        ctaTitle?: T;
+        ctaDescription?: T;
+        ctaLabel?: T;
+        ctaHref?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-settings_select".
+ */
+export interface PaymentSettingsSelect<T extends boolean = true> {
+  provider?: T;
+  notifyUrl?: T;
+  returnUrl?: T;
+  appId?: T;
+  sellerId?: T;
+  gateway?: T;
+  privateKey?: T;
+  publicKey?: T;
+  privateKeyConfigured?: T;
+  privateKeyLineCount?: T;
+  publicKeyConfigured?: T;
+  publicKeyLineCount?: T;
+  keysUpdatedAt?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

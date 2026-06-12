@@ -19,6 +19,7 @@ export function CancelOrderButton({
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function handleCancel() {
     const confirmed = window.confirm('确认取消这个订单吗？未支付订单取消后会释放库存占用。')
@@ -29,6 +30,7 @@ export function CancelOrderButton({
 
     setPending(true)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/cancel', {
@@ -49,6 +51,7 @@ export function CancelOrderButton({
         throw new Error(mapCancelError(result.error || 'ORDER_CANCEL_FAILED'))
       }
 
+      setSuccess('订单已取消，页面正在刷新。')
       router.refresh()
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : mapCancelError('ORDER_CANCEL_FAILED'))
@@ -68,6 +71,7 @@ export function CancelOrderButton({
         {pending ? '正在取消...' : label || '取消订单'}
       </button>
       {error ? <p style={{ margin: 0, color: '#b42318', fontSize: 13 }}>{error}</p> : null}
+      {!error && success ? <p style={{ margin: 0, color: '#265b35', fontSize: 13 }}>{success}</p> : null}
     </div>
   )
 }

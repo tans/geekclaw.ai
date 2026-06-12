@@ -7,10 +7,12 @@ export function MockPaymentActions({ orderNo }: { orderNo: string }) {
   const router = useRouter()
   const [pendingAction, setPendingAction] = useState<'paid' | 'failed' | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function submitOutcome(outcome: 'paid' | 'failed') {
     setPendingAction(outcome)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/pay/mock/complete', {
@@ -29,6 +31,8 @@ export function MockPaymentActions({ orderNo }: { orderNo: string }) {
       if (!response.ok) {
         throw new Error(result.error || 'MOCK_PAYMENT_FAILED')
       }
+
+      setSuccess(outcome === 'paid' ? '模拟支付成功，正在跳转到成功页。' : '模拟支付失败，正在跳转到失败页。')
 
       if (outcome === 'paid') {
         router.push(`/pay-success?out_trade_no=${encodeURIComponent(orderNo)}&trade_no=${encodeURIComponent(`MOCK-${orderNo}`)}`)
@@ -58,6 +62,11 @@ export function MockPaymentActions({ orderNo }: { orderNo: string }) {
       {error ? (
         <p style={{ margin: '12px 0 0', color: '#b42318', lineHeight: 1.7 }}>
           Mock 支付处理失败：{error}
+        </p>
+      ) : null}
+      {!error && success ? (
+        <p style={{ margin: '12px 0 0', color: '#265b35', lineHeight: 1.7 }}>
+          {success}
         </p>
       ) : null}
     </>

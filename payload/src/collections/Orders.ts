@@ -1,15 +1,27 @@
 import type { CollectionConfig } from 'payload'
+import { canAccessAdmin, canManageCommerce, canManageCommerceBoolean, hiddenFromRoles } from '@/lib/access'
+import { buildOrderPaymentChainFieldPatch } from '../lib/order-payment-labels.ts'
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
+  access: {
+    admin: canManageCommerceBoolean,
+    create: canManageCommerce,
+    delete: canManageCommerce,
+    read: canAccessAdmin,
+    update: canManageCommerce,
+  },
   admin: {
     useAsTitle: 'orderNo',
+    hidden: hiddenFromRoles(['super-admin', 'ops']),
     defaultColumns: [
       'orderNo',
       'customerName',
       'customerPhone',
       'source',
       'paymentStatus',
+      'paymentChainTags',
+      'paymentHasNotifyIssue',
       'fulfillmentStatus',
       'deliveryMethod',
       'totalAmount',
@@ -17,6 +29,10 @@ export const Orders: CollectionConfig = {
       'updatedAt',
     ],
     components: {
+      edit: {
+        beforeDocumentControls: ['@/components/admin/order-edit-ops-summary'],
+      },
+      beforeList: ['@/components/admin/orders-list-toolbar'],
       views: {
         edit: {
           paymentEvents: {
@@ -33,7 +49,7 @@ export const Orders: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data, originalDoc, operation }) => {
+      async ({ data, originalDoc, operation, req }) => {
         const nextData = { ...(data || {}) } as Record<string, unknown>
         const currentStatus = typeof nextData.status === 'string' ? nextData.status : originalDoc?.status
         const currentPaymentStatus =
@@ -73,6 +89,73 @@ export const Orders: CollectionConfig = {
           nextData.fulfilledAt = null
         }
 
+        if (!nextData.orderNo || typeof nextData.orderNo !== 'string' || !nextData.orderNo.trim()) {
+          nextData.orderNo = `GC${Date.now()}${Math.floor(Math.random() * 9000 + 1000)}`
+        }
+
+        const rawItems =
+          Array.isArray(nextData.items) && nextData.items.length
+            ? (nextData.items as Array<Record<string, unknown>>)
+            : Array.isArray(originalDoc?.items)
+              ? (originalDoc.items as Array<Record<string, unknown>>)
+              : []
+
+        const normalizedItems = await Promise.all(
+          rawItems.map(async (item) => {
+            const productValue = item.product
+            const productId =
+              typeof productValue === 'number'
+                ? productValue
+                : typeof productValue === 'object' && productValue && 'id' in productValue
+                  ? Number((productValue as { id?: number }).id)
+                  : null
+
+            let fallbackUnitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : null
+
+            if (productId) {
+              const product = await req.payload.findByID({
+                collection: 'products',
+                id: productId,
+                depth: 0,
+              }).catch(() => null)
+
+              if (product && typeof product.price === 'number') {
+                fallbackUnitPrice = product.price
+              }
+            }
+
+            return {
+              ...item,
+              quantity: typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1,
+              unitPrice: typeof fallbackUnitPrice === 'number' ? fallbackUnitPrice : 0,
+            }
+          }),
+        )
+
+        nextData.items = normalizedItems
+        nextData.totalAmount = normalizedItems.reduce((sum, item) => {
+          const quantity = typeof item.quantity === 'number' ? item.quantity : 0
+          const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+          return sum + quantity * unitPrice
+        }, 0)
+
+        const paymentEvents =
+          nextData.paymentEvents !== undefined ? nextData.paymentEvents : originalDoc?.paymentEvents
+        const paymentLastError =
+          typeof nextData.paymentLastError === 'string'
+            ? nextData.paymentLastError
+            : typeof originalDoc?.paymentLastError === 'string'
+              ? originalDoc.paymentLastError
+              : null
+
+        Object.assign(
+          nextData,
+          buildOrderPaymentChainFieldPatch({
+            paymentEvents,
+            paymentLastError,
+          }),
+        )
+
         return nextData
       },
     ],
@@ -109,7 +192,7 @@ export const Orders: CollectionConfig = {
             {
               name: 'source',
               type: 'select',
-              defaultValue: 'shop',
+              defaultValue: 'manual',
               options: [
                 { label: '商城', value: 'shop' },
                 { label: '专题页', value: 'landing' },
@@ -137,16 +220,21 @@ export const Orders: CollectionConfig = {
                 {
                   name: 'unitPrice',
                   type: 'number',
-                  required: true,
                   min: 0,
+                  admin: {
+                    description: '留空时会按当前商品价格自动回填。',
+                  },
                 },
               ],
             },
             {
               name: 'totalAmount',
               type: 'number',
-              required: true,
               min: 0,
+              admin: {
+                readOnly: true,
+                description: '保存时会根据商品数量和单价自动计算总价。',
+              },
             },
           ],
         },
@@ -286,6 +374,49 @@ export const Orders: CollectionConfig = {
               admin: {
                 readOnly: true,
                 description: '支付发起、回调、验签和失败信息都会记录在这里，便于联调排查。',
+              },
+            },
+            {
+              name: 'paymentChainTags',
+              type: 'json',
+              admin: {
+                readOnly: true,
+                description: '用于原生订单列表和工作台的链路筛选标签。',
+              },
+            },
+            {
+              name: 'paymentHasIssue',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
+              },
+            },
+            {
+              name: 'paymentHasNotifyIssue',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
+              },
+            },
+            {
+              name: 'paymentHasReturnRecord',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
+              },
+            },
+            {
+              name: 'paymentHasQueryRecord',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
+              },
+            },
+            {
+              name: 'paymentHasFinalResult',
+              type: 'checkbox',
+              admin: {
+                readOnly: true,
               },
             },
           ],

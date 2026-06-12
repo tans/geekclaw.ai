@@ -42,7 +42,7 @@ export function MarketingPage({ content }: { content: MarketingPageContent }) {
         </section>
 
         {content.sections.map((section) => (
-          <section key={section.title} style={sectionStyle}>
+          <section key={section.title} id={section.id} style={sectionStyle}>
             <div style={sectionHeadingStyle}>
               <p style={eyebrowStyle}>{section.eyebrow}</p>
               <h2 style={sectionTitleStyle}>{section.title}</h2>
@@ -54,6 +54,11 @@ export function MarketingPage({ content }: { content: MarketingPageContent }) {
                   {card.label ? <p style={smallMetaStyle}>{card.label}</p> : null}
                   <h3 style={cardTitleStyle}>{card.title}</h3>
                   <p style={mutedTextStyle}>{card.body}</p>
+                  {'href' in card && typeof card.href === 'string' ? (
+                    <MarketingLink href={card.href} style={cardLinkStyle}>
+                      了解更多
+                    </MarketingLink>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -100,39 +105,36 @@ function MarketingLink({
 }
 
 const mainStyle: CSSProperties = {
-  maxWidth: 1120,
+  maxWidth: 1180,
   margin: '0 auto',
-  padding: '64px 20px 48px',
+  padding: '72px 20px 56px',
 }
 
 const heroStyle: CSSProperties = {
   display: 'grid',
-  gap: 24,
-  gridTemplateColumns: 'minmax(0, 1.08fr) minmax(320px, 0.92fr)',
+  gap: 28,
+  gridTemplateColumns: 'minmax(0, 1.05fr) minmax(320px, 0.95fr)',
   alignItems: 'stretch',
 }
 
 const heroCopyStyle: CSSProperties = {
-  background: '#fff',
-  border: '1px solid rgba(20,20,20,0.08)',
-  borderRadius: 32,
-  padding: 44,
-  boxShadow: '0 24px 80px rgba(40, 20, 10, 0.06)',
+  padding: '42px 0',
 }
 
 const heroTitleStyle: CSSProperties = {
   margin: '18px 0 0',
-  fontSize: 'clamp(42px, 7vw, 82px)',
+  maxWidth: 760,
+  fontSize: 'clamp(44px, 7vw, 86px)',
   lineHeight: 1.02,
-  letterSpacing: '-0.055em',
+  letterSpacing: '-0.04em',
 }
 
 const leadStyle: CSSProperties = {
   margin: '20px 0 0',
   maxWidth: 720,
-  color: '#625a55',
+  color: '#4b5563',
   fontSize: 19,
-  lineHeight: 1.9,
+  lineHeight: 1.85,
 }
 
 const heroPanelStyle: CSSProperties = {
@@ -142,11 +144,11 @@ const heroPanelStyle: CSSProperties = {
   minHeight: 420,
   color: '#f8fbff',
   background:
-    'radial-gradient(circle at 20% 0%, rgba(103,232,249,0.24), transparent 34%), linear-gradient(145deg, #07111f, #14213d)',
+    'radial-gradient(circle at 20% 0%, rgba(96,165,250,0.34), transparent 34%), linear-gradient(145deg, #07111f, #12284f)',
   border: '1px solid rgba(255,255,255,0.14)',
-  borderRadius: 32,
+  borderRadius: 18,
   padding: 34,
-  boxShadow: '0 28px 90px rgba(7, 17, 31, 0.3)',
+  boxShadow: '0 28px 90px rgba(7, 17, 31, 0.26)',
 }
 
 const panelLabelStyle: CSSProperties = {
@@ -187,7 +189,8 @@ const metricStyle: CSSProperties = {
 }
 
 const sectionStyle: CSSProperties = {
-  marginTop: 56,
+  marginTop: 68,
+  scrollMarginTop: 96,
 }
 
 const sectionHeadingStyle: CSSProperties = {
@@ -199,8 +202,9 @@ const eyebrowStyle: CSSProperties = {
   margin: 0,
   color: 'var(--gc-accent)',
   fontSize: 12,
-  letterSpacing: '0.26em',
+  letterSpacing: '0.16em',
   textTransform: 'uppercase',
+  fontWeight: 800,
 }
 
 const sectionTitleStyle: CSSProperties = {
@@ -212,7 +216,7 @@ const sectionTitleStyle: CSSProperties = {
 
 const sectionDescriptionStyle: CSSProperties = {
   margin: '16px 0 0',
-  color: '#625a55',
+  color: '#4b5563',
   fontSize: 17,
   lineHeight: 1.9,
 }
@@ -220,15 +224,15 @@ const sectionDescriptionStyle: CSSProperties = {
 const cardGridStyle: CSSProperties = {
   display: 'grid',
   gap: 20,
-  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
 }
 
 const cardStyle: CSSProperties = {
   background: '#fff',
-  border: '1px solid rgba(20,20,20,0.08)',
-  borderRadius: 26,
+  border: '1px solid rgba(15,23,42,0.08)',
+  borderRadius: 14,
   padding: 26,
-  boxShadow: '0 18px 60px rgba(40, 20, 10, 0.05)',
+  boxShadow: '0 18px 54px rgba(15, 23, 42, 0.05)',
 }
 
 const cardTitleStyle: CSSProperties = {
@@ -240,7 +244,7 @@ const cardTitleStyle: CSSProperties = {
 
 const mutedTextStyle: CSSProperties = {
   margin: '14px 0 0',
-  color: '#6f6661',
+  color: '#5b6472',
   lineHeight: 1.85,
 }
 
@@ -257,7 +261,7 @@ const buttonBase: CSSProperties = {
   justifyContent: 'center',
   minWidth: 144,
   padding: '13px 20px',
-  borderRadius: 999,
+  borderRadius: 10,
   textDecoration: 'none',
   fontWeight: 700,
 }
@@ -272,7 +276,7 @@ const buttonSecondary: CSSProperties = {
   ...buttonBase,
   color: '#1d1a17',
   background: '#fff',
-  border: '1px solid rgba(20,20,20,0.12)',
+  border: '1px solid rgba(15,23,42,0.14)',
 }
 
 const smallMetaStyle: CSSProperties = {
@@ -280,6 +284,15 @@ const smallMetaStyle: CSSProperties = {
   color: 'var(--gc-accent)',
   fontSize: 13,
   fontWeight: 700,
+}
+
+const cardLinkStyle: CSSProperties = {
+  display: 'inline-flex',
+  marginTop: 18,
+  color: 'var(--gc-accent)',
+  fontSize: 14,
+  fontWeight: 800,
+  textDecoration: 'none',
 }
 
 const ctaStyle: CSSProperties = {

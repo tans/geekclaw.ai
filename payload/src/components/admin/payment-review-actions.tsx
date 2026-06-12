@@ -6,17 +6,21 @@ import { useState } from 'react'
 export function PaymentReviewActions({
   orderNo,
   compact = false,
+  disabled = false,
 }: {
   orderNo: string
   compact?: boolean
+  disabled?: boolean
 }) {
   const router = useRouter()
   const [pending, setPending] = useState<'query' | 'paid' | 'failed' | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function queryPayment() {
     setPending('query')
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/query-payment', {
@@ -35,6 +39,7 @@ export function PaymentReviewActions({
         throw new Error(mapReviewError(result.error || 'PAYMENT_QUERY_FAILED'))
       }
 
+      setSuccess('查单请求已完成，页面正在刷新最新支付状态。')
       router.refresh()
     } catch (queryError) {
       setError(queryError instanceof Error ? queryError.message : mapReviewError('PAYMENT_QUERY_FAILED'))
@@ -46,6 +51,7 @@ export function PaymentReviewActions({
   async function submitReview(outcome: 'paid' | 'failed') {
     setPending(outcome)
     setError('')
+    setSuccess('')
 
     try {
       const response = await fetch('/api/orders/review-payment', {
@@ -69,6 +75,7 @@ export function PaymentReviewActions({
         throw new Error(mapReviewError(result.error || 'PAYMENT_REVIEW_FAILED'))
       }
 
+      setSuccess(outcome === 'paid' ? '订单已确认到账，页面正在刷新。' : '订单已标记为支付失败，页面正在刷新。')
       router.refresh()
     } catch (reviewError) {
       setError(reviewError instanceof Error ? reviewError.message : mapReviewError('PAYMENT_REVIEW_FAILED'))
@@ -81,16 +88,27 @@ export function PaymentReviewActions({
     <div style={{ display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button type="button" onClick={queryPayment} disabled={pending !== null} style={compact ? compactNeutral : neutralButton}>
-          {pending === 'query' ? '查单中...' : '先查单'}
+          {disabled ? '无权限复核' : pending === 'query' ? '查单中...' : '先查单'}
         </button>
-        <button type="button" onClick={() => submitReview('paid')} disabled={pending !== null} style={compact ? compactSuccess : successButton}>
+        <button
+          type="button"
+          onClick={() => submitReview('paid')}
+          disabled={disabled || pending !== null}
+          style={compact ? compactSuccess : successButton}
+        >
           {pending === 'paid' ? '确认中...' : '确认已支付'}
         </button>
-        <button type="button" onClick={() => submitReview('failed')} disabled={pending !== null} style={compact ? compactDanger : dangerButton}>
+        <button
+          type="button"
+          onClick={() => submitReview('failed')}
+          disabled={disabled || pending !== null}
+          style={compact ? compactDanger : dangerButton}
+        >
           {pending === 'failed' ? '处理中...' : '标记失败'}
         </button>
       </div>
       {error ? <p style={{ margin: 0, color: '#b42318', fontSize: 13 }}>{error}</p> : null}
+      {!error && success ? <p style={{ margin: 0, color: '#265b35', fontSize: 13 }}>{success}</p> : null}
     </div>
   )
 }
