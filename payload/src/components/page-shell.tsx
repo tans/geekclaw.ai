@@ -11,8 +11,8 @@ export async function PageShell({ children }: { children: ReactNode }) {
       style={{
         minHeight: '100vh',
         background:
-          'radial-gradient(circle at top left, color-mix(in srgb, var(--gc-accent) 10%, transparent), transparent 24%), linear-gradient(180deg, var(--gc-bg), var(--gc-bg-soft))',
-        color: '#1d1a17',
+          'linear-gradient(180deg, var(--gc-bg), var(--gc-bg-soft) 58%, #ffffff)',
+        color: 'var(--gc-text)',
         ['--gc-accent' as string]: site.primaryColor,
       }}
     >

@@ -16,7 +16,7 @@ export const defaultSiteSettings: SeedSiteSetting = {
   siteUrl: 'https://geekclaw.ai',
   primaryColor: '#1457d9',
   seoTitle: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
-  seoDescription: 'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+  seoDescription: 'GeekClaw 是一个 7 x 24 小时协助企业团队处理知识、工具和流程任务的 AI Agent 工作台。',
   contactEmail: 'team@geekclaw.ai',
   navigation: [
     { label: '首页', href: '/' },
@@ -27,25 +27,25 @@ export const defaultSiteSettings: SeedSiteSetting = {
   ],
   home: {
     eyebrow: 'GeekClaw AI Agent',
-    heroTitle: '让 AI Agent 进入企业真实工作流',
+    heroTitle: '一个 7 x 24 小时帮团队干活的 AI Agent',
     heroDescription:
-      'GeekClaw 围绕企业知识、工具调用、流程自动化和本地化部署，帮助团队把 AI 从问答带入可交付的业务执行。',
+      'GeekClaw 连接企业知识、业务系统和自动化工具，让 Agent 能理解目标、拆解任务、调用工具、推动流程，并把结果交付给团队。',
     primaryActionLabel: '预约演示',
     primaryActionHref: 'mailto:team@geekclaw.ai?subject=GeekClaw%20演示预约',
     secondaryActionLabel: '查看部署方案',
     secondaryActionHref: '/#deployment',
     panelEyebrow: 'Product System',
-    panelTitle: '从知识理解到任务执行，一套企业可控的 Agent 工作台。',
+    panelTitle: '像助理一样理解任务，像系统一样稳定执行。',
     panelBody:
-      '把知识库、业务系统、自动化工具和审批节点连接起来，让 Agent 能查资料、调工具、跑流程，并留下可审计的执行记录。',
+      '把知识库、业务系统、自动化工具和审批节点连接起来，形成从对话到执行的闭环，并留下可审计的过程记录。',
     panelMetrics: [
       { value: 'Agent', label: '任务执行' },
       { value: 'Flow', label: '流程自动化' },
       { value: 'Local', label: '本地部署' },
     ],
-    featuredPagesHeading: '企业 Agent 能力',
+    featuredPagesHeading: '从聊天到行动的 Agent 能力',
     featuredPagesDescription: '围绕企业日常工作，把知识检索、工具调用、流程编排和权限审计放在同一个工作台里。',
-    featuredPostsHeading: '适用业务场景',
+    featuredPostsHeading: '覆盖团队每天都会遇到的任务',
     featuredPostsDescription: '从销售、客服、运营、交付到内部支持，优先覆盖高频、规则明确、需要跨系统协作的流程。',
     featuredProductsHeading: '部署与交付方式',
     featuredProductsDescription: '支持试点、私有化部署、预装主机和行业模板，按企业现有系统逐步接入。',
@@ -73,9 +73,9 @@ export const defaultPages: SeedPage[] = [
     title: '首页',
     slug: 'home',
     status: 'published' as const,
-    heroTitle: '让 AI Agent 进入企业真实工作流',
+    heroTitle: '一个 7 x 24 小时帮团队干活的 AI Agent',
     heroDescription:
-      'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+      'GeekClaw 是一个 7 x 24 小时协助企业团队处理知识、工具和流程任务的 AI Agent 工作台。',
   },
   {
     title: 'LiloAvatar',

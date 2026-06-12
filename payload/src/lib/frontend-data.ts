@@ -160,11 +160,11 @@ const fallbackData: FrontendDataSource = {
     home: {
       title: 'GeekClaw',
       slug: 'home',
-      heroTitle: '让 AI Agent 进入企业真实工作流',
+      heroTitle: '一个 7 x 24 小时帮团队干活的 AI Agent',
       heroDescription:
-        'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+        'GeekClaw 是一个 7 x 24 小时协助企业团队处理知识、工具和流程任务的 AI Agent 工作台。',
       seoTitle: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
-      seoDescription: 'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+      seoDescription: 'GeekClaw 是一个 7 x 24 小时协助企业团队处理知识、工具和流程任务的 AI Agent 工作台。',
     },
     bailongma: {
       title: 'LiloAvatar',
@@ -700,19 +700,19 @@ export async function getFrontendHomeContent(): Promise<FrontendHomeContent> {
     : [
         {
           label: 'Knowledge',
-          title: '企业知识库',
+          title: '理解企业知识',
           body: '接入制度、产品资料、项目文档和 FAQ，让 Agent 在受控范围内检索、引用和生成回答。',
           href: '/#capabilities',
         },
         {
           label: 'Tools',
-          title: '工具调用与系统接入',
+          title: '连接业务工具',
           body: '连接 CRM、工单、表格、数据库和内部接口，让 Agent 能执行查询、写入、同步和通知。',
           href: '/#capabilities',
         },
         {
           label: 'Governance',
-          title: '权限、审批与审计',
+          title: '可控执行与审计',
           body: '为不同角色设置可用能力和确认节点，保留执行记录，满足企业运营和合规要求。',
           href: '/#capabilities',
         },
@@ -728,19 +728,19 @@ export async function getFrontendHomeContent(): Promise<FrontendHomeContent> {
     : [
         {
           label: 'Sales',
-          title: '销售线索与客户跟进',
+          title: '客户跟进助理',
           body: '自动整理客户信息、生成跟进建议、同步 CRM，并把下一步任务推送给销售团队。',
           href: '/#scenarios',
         },
         {
           label: 'Support',
-          title: '客服与内部支持',
+          title: '知识问答助理',
           body: '基于知识库回答问题，识别复杂工单并转人工，减少重复咨询和跨部门等待。',
           href: '/#scenarios',
         },
         {
           label: 'Operations',
-          title: '运营报表与交付协同',
+          title: '运营协同助理',
           body: '汇总多系统数据，生成日报、周报和项目进展，协助团队发现异常并推动处理。',
           href: '/#scenarios',
         },

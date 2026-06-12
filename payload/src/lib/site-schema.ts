@@ -38,7 +38,7 @@ export function ensureSiteSettingsSchema() {
     }
 
     if (!names.has('home_hero_title')) {
-      db.exec("alter table site_settings add column home_hero_title text default '让 AI Agent 进入企业真实工作流'")
+      db.exec("alter table site_settings add column home_hero_title text default '一个 7 x 24 小时帮团队干活的 AI Agent'")
     }
 
     if (!names.has('home_hero_description')) {
@@ -66,7 +66,7 @@ export function ensureSiteSettingsSchema() {
     }
 
     if (!names.has('home_panel_title')) {
-      db.exec("alter table site_settings add column home_panel_title text default '从知识理解到任务执行，一套企业可控的 Agent 工作台。'")
+      db.exec("alter table site_settings add column home_panel_title text default '像助理一样理解任务，像系统一样稳定执行。'")
     }
 
     if (!names.has('home_panel_body')) {
@@ -74,7 +74,7 @@ export function ensureSiteSettingsSchema() {
     }
 
     if (!names.has('home_featured_pages_heading')) {
-      db.exec("alter table site_settings add column home_featured_pages_heading text default '企业 Agent 能力'")
+      db.exec("alter table site_settings add column home_featured_pages_heading text default '从聊天到行动的 Agent 能力'")
     }
 
     if (!names.has('home_featured_pages_description')) {
@@ -82,7 +82,7 @@ export function ensureSiteSettingsSchema() {
     }
 
     if (!names.has('home_featured_posts_heading')) {
-      db.exec("alter table site_settings add column home_featured_posts_heading text default '适用业务场景'")
+      db.exec("alter table site_settings add column home_featured_posts_heading text default '覆盖团队每天都会遇到的任务'")
     }
 
     if (!names.has('home_featured_posts_description')) {

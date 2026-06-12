@@ -45,12 +45,12 @@ export type MarketingPageContent = {
 export const homeContent: MarketingPageContent = {
   seo: {
     title: 'GeekClaw | 企业级 AI Agent 与自动化工作台',
-    description: 'GeekClaw 面向企业团队提供可落地的 AI Agent、自动化流程、知识库与私有化部署能力。',
+    description: 'GeekClaw 是一个 7 x 24 小时协助企业团队处理知识、工具和流程任务的 AI Agent 工作台。',
   },
   eyebrow: 'GeekClaw AI Agent',
-  title: '让 AI Agent 进入企业真实工作流',
+  title: '一个 7 x 24 小时帮团队干活的 AI Agent',
   lead:
-    'GeekClaw 围绕企业知识、工具调用、流程自动化和本地化部署，帮助团队把 AI 从问答带入可交付的业务执行。',
+    'GeekClaw 连接企业知识、业务系统和自动化工具，让 Agent 能理解目标、拆解任务、调用工具、推动流程，并把结果交付给团队。',
   primaryAction: {
     label: '预约演示',
     href: 'mailto:team@geekclaw.ai?subject=GeekClaw%20演示预约',
@@ -61,9 +61,9 @@ export const homeContent: MarketingPageContent = {
   },
   panel: {
     eyebrow: 'Product System',
-    title: '从知识理解到任务执行，一套企业可控的 Agent 工作台。',
+    title: '像助理一样理解任务，像系统一样稳定执行。',
     body:
-      '把知识库、业务系统、自动化工具和审批节点连接起来，让 Agent 能查资料、调工具、跑流程，并留下可审计的执行记录。',
+      '把知识库、业务系统、自动化工具和审批节点连接起来，形成从对话到执行的闭环，并留下可审计的过程记录。',
     metrics: [
       { value: 'Agent', label: '任务执行' },
       { value: 'Flow', label: '流程自动化' },
@@ -74,22 +74,22 @@ export const homeContent: MarketingPageContent = {
     {
       id: 'capabilities',
       eyebrow: 'Capabilities',
-      title: '企业 Agent 能力',
+      title: '从聊天到行动的 Agent 能力',
       body: '围绕企业日常工作，把知识检索、工具调用、流程编排和权限审计放在同一个工作台里。',
       cards: [
         {
           label: 'Knowledge',
-          title: '企业知识库',
+          title: '理解企业知识',
           body: '接入制度、产品资料、项目文档和 FAQ，让 Agent 在受控范围内检索、引用和生成回答。',
         },
         {
           label: 'Tools',
-          title: '工具调用与系统接入',
+          title: '连接业务工具',
           body: '连接 CRM、工单、表格、数据库和内部接口，让 Agent 能执行查询、写入、同步和通知。',
         },
         {
           label: 'Governance',
-          title: '权限、审批与审计',
+          title: '可控执行与审计',
           body: '为不同角色设置可用能力和确认节点，保留执行记录，满足企业运营和合规要求。',
         },
       ],
@@ -97,22 +97,22 @@ export const homeContent: MarketingPageContent = {
     {
       id: 'scenarios',
       eyebrow: 'Scenarios',
-      title: '适用业务场景',
+      title: '覆盖团队每天都会遇到的任务',
       body: '从销售、客服、运营、交付到内部支持，优先覆盖高频、规则明确、需要跨系统协作的流程。',
       cards: [
         {
           label: 'Sales',
-          title: '销售线索与客户跟进',
+          title: '客户跟进助理',
           body: '自动整理客户信息、生成跟进建议、同步 CRM，并把下一步任务推送给销售团队。',
         },
         {
           label: 'Support',
-          title: '客服与内部支持',
+          title: '知识问答助理',
           body: '基于知识库回答问题，识别复杂工单并转人工，减少重复咨询和跨部门等待。',
         },
         {
           label: 'Operations',
-          title: '运营报表与交付协同',
+          title: '运营协同助理',
           body: '汇总多系统数据，生成日报、周报和项目进展，协助团队发现异常并推动处理。',
         },
       ],

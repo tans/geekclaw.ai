@@ -78,14 +78,14 @@ export const SiteSettings: GlobalConfig = {
         {
           name: 'heroTitle',
           type: 'text',
-          defaultValue: '让 AI Agent 进入企业真实工作流',
+          defaultValue: '一个 7 x 24 小时帮团队干活的 AI Agent',
           required: true,
         },
         {
           name: 'heroDescription',
           type: 'textarea',
           defaultValue:
-            'GeekClaw 围绕企业知识、工具调用、流程自动化和本地化部署，帮助团队把 AI 从问答带入可交付的业务执行。',
+            'GeekClaw 连接企业知识、业务系统和自动化工具，让 Agent 能理解目标、拆解任务、调用工具、推动流程，并把结果交付给团队。',
         },
         {
           name: 'primaryActionLabel',
@@ -115,13 +115,13 @@ export const SiteSettings: GlobalConfig = {
         {
           name: 'panelTitle',
           type: 'text',
-          defaultValue: '从知识理解到任务执行，一套企业可控的 Agent 工作台。',
+          defaultValue: '像助理一样理解任务，像系统一样稳定执行。',
         },
         {
           name: 'panelBody',
           type: 'textarea',
           defaultValue:
-            '把知识库、业务系统、自动化工具和审批节点连接起来，让 Agent 能查资料、调工具、跑流程，并留下可审计的执行记录。',
+            '把知识库、业务系统、自动化工具和审批节点连接起来，形成从对话到执行的闭环，并留下可审计的过程记录。',
         },
         {
           name: 'panelMetrics',
@@ -147,7 +147,7 @@ export const SiteSettings: GlobalConfig = {
         {
           name: 'featuredPagesHeading',
           type: 'text',
-          defaultValue: '企业 Agent 能力',
+          defaultValue: '从聊天到行动的 Agent 能力',
         },
         {
           name: 'featuredPagesDescription',
@@ -163,7 +163,7 @@ export const SiteSettings: GlobalConfig = {
         {
           name: 'featuredPostsHeading',
           type: 'text',
-          defaultValue: '适用业务场景',
+          defaultValue: '覆盖团队每天都会遇到的任务',
         },
         {
           name: 'featuredPostsDescription',
