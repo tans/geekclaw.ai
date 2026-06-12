@@ -22,9 +22,6 @@ type PresaleOrder = {
 };
 
 const root = process.cwd();
-const webRoot = resolve(root, "web");
-process.env.CLAWOS_WEB_ROOT ??= webRoot;
-const { app: webApp } = await import("../web/src/index");
 const port = Number(process.env.PORT ?? "8787");
 const stylePath = resolve(root, "dist", "output.css");
 const dataDir = resolve(root, "data");
@@ -663,7 +660,7 @@ Bun.serve({
       return serveFile(assetPath);
     }
 
-    return webApp.fetch(req);
+    return new Response("Not Found", { status: 404 });
   },
 });
 
